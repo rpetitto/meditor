@@ -3,6 +3,5 @@ dist/
 .DS_Store
 *.log
 
-# Secret webhook URL baked into packaged builds (see scripts/package.sh)
+# Default webhook (your relay URL) baked into packaged builds (see scripts/package.sh)
 .webhook-url
-.webhook-token

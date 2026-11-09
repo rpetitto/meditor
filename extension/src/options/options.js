@@ -1,4 +1,4 @@
-import { DEFAULT_WEBHOOK_URL, getSettings, saveSettings, originPattern, shortHost, timeAgo } from '../shared/settings.js';
+import { getDefaultWebhookUrl, getSettings, saveSettings, originPattern, shortHost, timeAgo } from '../shared/settings.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -47,17 +47,14 @@ async function saveWebhook() {
     setStatus('bad', `Permission to contact ${shortHost(url)} was declined.`);
     return false;
   }
-  const saved = await saveSettings({ webhookUrl: url, webhookToken: $('token').value });
+  // Saving the built-in default stores "use the default", so later builds can still move it.
+  await saveSettings({ webhookUrl: url === (await getDefaultWebhookUrl()) ? '' : url });
   $('webhook').value = url;
-  $('token').value = saved.webhookToken;
   return true;
 }
 
 async function onSave() {
-  if (await saveWebhook()) {
-    const { webhookToken } = await getSettings();
-    setStatus('ok', webhookToken ? 'Saved, with bearer token' : 'Saved');
-  }
+  if (await saveWebhook()) setStatus('ok', 'Saved');
 }
 
 async function onTest() {
@@ -72,10 +69,12 @@ async function onTest() {
 }
 
 async function onReset() {
-  if (!DEFAULT_WEBHOOK_URL) return;
-  $('webhook').value = DEFAULT_WEBHOOK_URL;
-  await saveSettings({ webhookUrl: DEFAULT_WEBHOOK_URL });
-  setStatus('ok', 'Restored the default Glide webhook');
+  const fallback = await getDefaultWebhookUrl();
+  if (!fallback) return;
+  $('webhook').value = fallback;
+  // Clearing the stored URL makes Meditor follow the built-in default, including future builds.
+  await saveSettings({ webhookUrl: '' });
+  setStatus('ok', 'Restored the default webhook');
 }
 
 function renderAuto(settings) {
@@ -139,12 +138,11 @@ async function renderHistory() {
 async function init() {
   const settings = await getSettings();
   $('webhook').value = settings.webhookUrl;
-  $('token').value = settings.webhookToken;
-  $('webhook').placeholder = 'https://go.glideapps.com/api/container/plugin/webhook-trigger/…';
+  $('webhook').placeholder = 'https://meditor-relay.<your-subdomain>.workers.dev';
   // Builds packaged without a default webhook have nothing to reset to.
-  $('reset').hidden = !DEFAULT_WEBHOOK_URL;
+  $('reset').hidden = !(await getDefaultWebhookUrl());
   if (!settings.webhookUrl) {
-    setStatus('bad', 'Paste your Glide webhook URL and press Save to start clipping.');
+    setStatus('bad', 'Paste your Meditor relay URL and press Save to start clipping.');
     $('webhook').focus();
   }
   renderAuto(settings);
@@ -155,13 +153,6 @@ async function init() {
   $('reset').addEventListener('click', onReset);
   $('webhook').addEventListener('keydown', (e) => { if (e.key === 'Enter') onSave(); });
   $('webhook').addEventListener('input', () => setStatus('', ''));
-  $('token').addEventListener('input', () => setStatus('', ''));
-  $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') onSave(); });
-  $('token-toggle').addEventListener('click', () => {
-    const show = $('token').type === 'password';
-    $('token').type = show ? 'text' : 'password';
-    $('token-toggle').textContent = show ? 'Hide' : 'Show';
-  });
 
   $('auto').addEventListener('change', async (e) => renderAuto(await saveSettings({ autoSend: e.target.checked })));
   $('threshold').addEventListener('input', (e) => { $('threshold-out').textContent = `${e.target.value}%`; });

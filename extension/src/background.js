@@ -1,4 +1,4 @@
-import { DEFAULTS, HISTORY_LIMIT, getSettings, toPayload, originPattern } from './shared/settings.js';
+import { DEFAULTS, HISTORY_LIMIT, getSettings, getDefaultWebhookUrl, toPayload } from './shared/settings.js';
 
 // -----------------------------------------------------------------------------
 // Toolbar badge
@@ -53,7 +53,7 @@ async function lastSuccessfulSend(url) {
 
 async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
   const payload = toPayload(rawPayload);
-  const { webhookUrl, webhookToken } = await getSettings();
+  const { webhookUrl } = await getSettings();
   const entry = { id: crypto.randomUUID(), sentAt: Date.now(), source, payload, webhookUrl, ok: false };
 
   if (!payload.url) {
@@ -76,11 +76,7 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
   try {
     const res = await fetch(target.href, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/plain, */*',
-        ...(webhookToken ? { Authorization: `Bearer ${webhookToken}` } : {}),
-      },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/plain, */*' },
       body: JSON.stringify(payload),
       signal: controller.signal,
       credentials: 'omit',
@@ -88,21 +84,18 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
     });
     const body = (await res.text().catch(() => '')).slice(0, 500);
     Object.assign(entry, { ok: res.ok, status: res.status, response: body });
-    if (res.status === 401 || res.status === 403) {
-      entry.authError = true;
-      entry.error = webhookToken
-        ? `The webhook rejected the bearer token (HTTP ${res.status}). Copy it again from the Glide trigger into Settings.`
-        : `The webhook requires a bearer token (HTTP ${res.status}). Add it in Settings.`;
-    } else if (!res.ok) {
-      entry.error = `Webhook responded ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
+    if (!res.ok) {
+      // The relay explains failures as {"error": "..."}; fall back to the status line.
+      let detail = '';
+      try { detail = JSON.parse(body)?.error || ''; } catch { /* not JSON */ }
+      const text = body.trim();
+      const plain = !detail && text && text.length <= 140 && !text.includes('<') ? ` — ${text}` : '';
+      entry.error = detail || `Webhook responded ${res.status}${plain}`;
     }
   } catch (err) {
-    let error = err?.name === 'AbortError' ? 'The webhook did not respond within 20 seconds.' : `Network error: ${err?.message || err}`;
-    if (err?.name !== 'AbortError') {
-      const granted = await chrome.permissions.contains({ origins: [originPattern(target.href)] }).catch(() => true);
-      if (!granted) error = `Meditor isn't allowed to contact ${target.host}. Open Settings and save the webhook again to grant access.`;
-    }
-    entry.error = error;
+    entry.error = err?.name === 'AbortError'
+      ? 'The webhook did not respond within 20 seconds.'
+      : `Couldn't reach ${target.host}. Check your connection and try again.`;
   } finally {
     clearTimeout(timer);
   }
@@ -114,7 +107,6 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
     ok: entry.ok,
     status: entry.status,
     error: entry.error,
-    authError: !!entry.authError,
     response: entry.response,
     sentAt: entry.sentAt,
   };
@@ -184,12 +176,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
-  // Seed defaults without clobbering anything the user already set.
+  // Seed defaults without clobbering anything the user already set. The webhook URL is
+  // not seeded: leaving it unset means a newer build's default always takes effect.
   const current = await chrome.storage.sync.get(null);
-  const missing = Object.fromEntries(Object.entries(DEFAULTS).filter(([k]) => !(k in current)));
+  const missing = Object.fromEntries(Object.entries(DEFAULTS).filter(([k]) => k !== 'webhookUrl' && !(k in current)));
   if (Object.keys(missing).length) await chrome.storage.sync.set(missing);
 
-  if (reason === 'install' && !(await chrome.storage.sync.get('webhookUrl')).webhookUrl) {
+  // Up to v1.1 the Glide URL was stored directly (and a bearer token could be saved
+  // locally). Clips now go through the relay, so drop both in favour of the default.
+  // Runs on every install event: Chrome reports some upgrades of unpacked extensions
+  // as "install" rather than "update", and on a clean profile this is a no-op.
+  if (/^https:\/\/go\.glideapps\.com\//i.test(current.webhookUrl || '') && (await getDefaultWebhookUrl())) {
+    await chrome.storage.sync.remove('webhookUrl');
+  }
+  await chrome.storage.local.remove('webhookToken');
+
+  if (reason === 'install' && !(await getSettings()).webhookUrl) {
     // Built without a default webhook: send the user straight to Settings to add one.
     chrome.runtime.openOptionsPage().catch(() => {});
   }

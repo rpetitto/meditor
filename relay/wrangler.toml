@@ -1,0 +1,8 @@
+# Deploy with:  npx wrangler deploy        (from this folder)
+# Then set the two secrets (you'll be prompted for each value; they never touch this repo):
+#   npx wrangler secret put GLIDE_WEBHOOK_URL
+#   npx wrangler secret put GLIDE_TOKEN
+name = "meditor-relay"
+main = "src/worker.js"
+compatibility_date = "2025-06-01"
+workers_dev = true

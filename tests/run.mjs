@@ -11,10 +11,13 @@
 
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import relayWorker, { validatePayload } from '../relay/src/worker.js';
+import { startRelay } from '../relay/dev-server.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -40,7 +43,7 @@ const SECURE_TOKEN = 'test-token-7f3a9c';
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  // /hook accepts anything; /secure-hook behaves like a Glide trigger with a bearer token.
+  // /hook accepts anything; /secure-hook answers like a real Glide trigger that has a bearer token.
   if (url.pathname === '/hook' || url.pathname === '/secure-hook') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'content-type, accept, authorization');
@@ -50,7 +53,7 @@ const server = http.createServer((req, res) => {
     req.on('data', (c) => { body += c; });
     req.on('end', () => {
       if (url.pathname === '/secure-hook' && req.headers.authorization !== `Bearer ${SECURE_TOKEN}`) {
-        return res.writeHead(401, { 'Content-Type': 'application/json' }).end('{"error":"Unauthorized"}');
+        return res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8' }).end('Invalid bearer token');
       }
       received.push({ path: url.pathname, headers: req.headers, body });
       res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}');
@@ -149,14 +152,103 @@ await test('Product page is not an article', async () => {
 await browser.close();
 
 // ---------------------------------------------------------------------------
-// 2. Extension end to end
+// 2. Relay (Cloudflare Worker code, called directly)
+// ---------------------------------------------------------------------------
+
+console.log('\nRelay');
+const EXT_ORIGIN = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop';
+const RELAY_ENV = { GLIDE_WEBHOOK_URL: 'https://glide.test/hook', GLIDE_TOKEN: 'relay-secret' };
+const GOOD = { url: 'https://news.test/a', title: 'T', image: '', published_date: '2026-11-08T19:30:00.000Z', authors: ['A B'] };
+
+async function callRelay({ method = 'POST', origin = EXT_ORIGIN, body = GOOD, env = RELAY_ENV, glide = () => new Response('ok') } = {}) {
+  const forwarded = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { forwarded.push({ url, init }); return glide(); };
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (origin) headers.Origin = origin;
+    const res = await relayWorker.fetch(new Request('https://relay.test/', {
+      method, headers, body: ['GET', 'OPTIONS'].includes(method) ? undefined : (typeof body === 'string' ? body : JSON.stringify(body)),
+    }), env);
+    return { res, json: await res.clone().json().catch(() => null), forwarded };
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+await test('forwards a valid clip to Glide with the bearer token, and only the five fields', async () => {
+  const { res, json, forwarded } = await callRelay({ body: { ...GOOD, extra: 'dropped', authors: [' A B ', ''] } });
+  assert.equal(res.status, 200);
+  assert.deepEqual(json, { ok: true, status: 200 });
+  assert.equal(forwarded.length, 1);
+  assert.equal(forwarded[0].url, RELAY_ENV.GLIDE_WEBHOOK_URL);
+  assert.equal(forwarded[0].init.headers.Authorization, 'Bearer relay-secret');
+  assert.deepEqual(JSON.parse(forwarded[0].init.body), { ...GOOD, authors: ['A B'] });
+  assert.equal(res.headers.get('access-control-allow-origin'), EXT_ORIGIN);
+});
+
+await test('rejects requests that are not from a Chrome extension', async () => {
+  for (const origin of [null, 'https://evil.test', 'chrome-extension://short']) {
+    const { res, forwarded } = await callRelay({ origin });
+    assert.equal(res.status, 403, String(origin));
+    assert.equal(forwarded.length, 0);
+  }
+  const pinned = await callRelay({ env: { ...RELAY_ENV, ALLOWED_ORIGINS: 'chrome-extension://pppppppppppppppppppppppppppppppp' } });
+  assert.equal(pinned.res.status, 403);
+});
+
+await test('rejects malformed clips without calling Glide', async () => {
+  const bad = [
+    'not json', [], { ...GOOD, url: '' }, { ...GOOD, url: 'javascript:alert(1)' }, { ...GOOD, image: 'ftp://x' },
+    { ...GOOD, title: 5 }, { ...GOOD, authors: 'A' }, { ...GOOD, authors: [1] }, { ...GOOD, published_date: 'soon' },
+    { ...GOOD, title: 'x'.repeat(501) }, { ...GOOD, authors: Array(26).fill('A') },
+  ];
+  for (const body of bad) {
+    const { res, json, forwarded } = await callRelay({ body });
+    assert.equal(res.status, 400, JSON.stringify(body).slice(0, 60));
+    assert.ok(json.error);
+    assert.equal(forwarded.length, 0);
+  }
+  const huge = await callRelay({ body: { ...GOOD, title: 'x'.repeat(20000) } });
+  assert.equal(huge.res.status, 413);
+});
+
+await test('reports Glide token problems and outages without leaking the secret', async () => {
+  const rejected = await callRelay({ glide: () => new Response('Invalid bearer token', { status: 401 }) });
+  assert.equal(rejected.res.status, 502);
+  assert.match(rejected.json.error, /rejected the relay’s bearer token/);
+  const down = await callRelay({ glide: () => { throw new TypeError('fetch failed'); } });
+  assert.equal(down.res.status, 502);
+  const unconfigured = await callRelay({ env: {} });
+  assert.equal(unconfigured.res.status, 500);
+  const health = await callRelay({ method: 'GET' });
+  assert.deepEqual(health.json, { ok: true, service: 'meditor-relay', configured: true });
+  for (const r of [rejected, down, unconfigured, health]) {
+    const text = JSON.stringify(r.json);
+    assert.ok(!text.includes('relay-secret') && !text.includes('glide.test'), text);
+  }
+});
+
+await test('answers the CORS preflight for extensions only', async () => {
+  const ok = await callRelay({ method: 'OPTIONS' });
+  assert.equal(ok.res.status, 204);
+  assert.match(ok.res.headers.get('access-control-allow-methods'), /POST/);
+  const no = await callRelay({ method: 'OPTIONS', origin: 'https://evil.test' });
+  assert.equal(no.res.status, 403);
+  assert.equal(no.res.headers.get('access-control-allow-origin'), null);
+});
+
+assert.ok(validatePayload(GOOD).payload);
+
+// ---------------------------------------------------------------------------
+// 3. Extension end to end
 // ---------------------------------------------------------------------------
 
 console.log('\nExtension');
 // For screenshots, serve the fixture site under a realistic host name instead of 127.0.0.1:port.
 const SITE = SHOTS ? 'http://www.dailyledger.test' : ORIGIN;
-// A placeholder Glide URL for screenshots. The real webhook is never used by the tests.
-const GLIDE = 'https://go.glideapps.com/api/container/plugin/webhook-trigger/YOUR_APP_ID/YOUR_TRIGGER_ID';
+// A placeholder relay URL for screenshots. The real webhook is never used by the tests.
+const GLIDE = 'https://meditor-relay.your-subdomain.workers.dev/';
 const LOCAL_HOOK = `${ORIGIN}/hook`;
 
 const ctx = await chromium.launchPersistentContext('', {
@@ -176,13 +268,14 @@ await test('service worker boots and seeds default settings', async () => {
   const settings = await worker.evaluate(async () => {
     for (let i = 0; i < 20; i += 1) {
       const s = await chrome.storage.sync.get(null);
-      if ('webhookUrl' in s) return s;
+      if ('autoSend' in s) return s;
       await new Promise((r) => setTimeout(r, 100));
     }
     return chrome.storage.sync.get(null);
   });
-  // The unpackaged source ships without a webhook (it's a secret); package.sh bakes one in.
-  assert.equal(settings.webhookUrl, '');
+  // The source ships without a default webhook (package.sh bakes in the relay URL), and the
+  // URL is never seeded into storage, so a newer build's default always takes effect.
+  assert.equal('webhookUrl' in settings, false);
   assert.equal(settings.autoSend, false);
   assert.equal(settings.autoSendThreshold, 70);
 });
@@ -191,7 +284,7 @@ await test('first install without a webhook opens Settings', async () => {
   const isOptions = (p) => p.url().includes('/src/options/options.html');
   const opts = ctx.pages().find(isOptions) || await ctx.waitForEvent('page', { predicate: isOptions, timeout: 5000 });
   await opts.waitForSelector('#webhook-status.bad');
-  assert.match(await opts.textContent('#webhook-status'), /Paste your Glide webhook URL/);
+  assert.match(await opts.textContent('#webhook-status'), /Paste your Meditor relay URL/);
   assert.equal(await opts.isHidden('#reset'), true);
   await opts.close();
 });
@@ -308,29 +401,21 @@ await test('a failing webhook shows an error instead of "sent"', async () => {
   await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/hook`);
 });
 
-await test('a webhook that needs a bearer token reports the 401 and links to Settings', async () => {
+await test('posting straight to a token-protected Glide trigger shows Glide\'s 401 reason', async () => {
   await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/secure-hook`);
   await popup.reload();
   await popup.waitForSelector('#view-result:not([hidden])');
   await popup.click('#send');
   await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
-  assert.match(await popup.textContent('#footer-note'), /requires a bearer token \(HTTP 401\)/);
-  assert.equal(await popup.textContent('#footer-note .footer__fix'), 'Open Settings');
+  assert.equal(await popup.textContent('#footer-note'), 'Webhook responded 401 — Invalid bearer token');
 });
 
-await test('a wrong bearer token is reported as rejected', async () => {
-  await worker.evaluate(() => chrome.storage.local.set({ webhookToken: 'not-the-token' }));
-  await popup.reload();
-  await popup.waitForSelector('#view-result:not([hidden])');
-  await popup.click('#send');
-  await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
-  assert.match(await popup.textContent('#footer-note'), /rejected the bearer token/);
-});
+const relay = await startRelay({ env: { GLIDE_WEBHOOK_URL: `${ORIGIN}/secure-hook`, GLIDE_TOKEN: SECURE_TOKEN } });
+const RELAY_URL = `http://127.0.0.1:${relay.address().port}/`;
 
-await test('the bearer token from Settings is sent as an Authorization header', async () => {
+await test('through the relay, Glide receives the clip with the token the extension never sees', async () => {
   const before = received.length;
-  // Saved as pasted from Glide, "Bearer " prefix included; Meditor normalizes it.
-  await worker.evaluate((t) => chrome.storage.local.set({ webhookToken: `Bearer ${t}` }), SECURE_TOKEN);
+  await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), RELAY_URL);
   await popup.reload();
   await popup.waitForSelector('#view-result:not([hidden])');
   await popup.click('#send');
@@ -338,22 +423,33 @@ await test('the bearer token from Settings is sent as an Authorization header', 
   assert.equal(received.length, before + 1);
   assert.equal(received.at(-1).path, '/secure-hook');
   assert.equal(received.at(-1).headers.authorization, `Bearer ${SECURE_TOKEN}`);
-  assert.deepEqual(Object.keys(JSON.parse(received.at(-1).body)), ['url', 'title', 'image', 'published_date', 'authors']);
-
+  assert.deepEqual(JSON.parse(received.at(-1).body), {
+    url: `${SITE}/2026/11/08/city-council-approves-riverfront-park-plan/?id=42`,
+    title: 'City council approves riverfront park plan after \u201cmarathon\u201d session',
+    image: `${SITE}/media/riverfront-park.jpg`,
+    published_date: '2026-11-08T19:30:00.000Z',
+    authors: ['Mar\u00eda Jos\u00e9 \u00c1lvarez', 'John E. Smith'],
+  });
+  // Nothing the extension stores or shows contains the token.
+  const everything = await worker.evaluate(async () => JSON.stringify([await chrome.storage.sync.get(null), await chrome.storage.local.get(null)]));
+  assert.ok(!everything.includes(SECURE_TOKEN));
   const opts = await ctx.newPage();
   await opts.goto(`chrome-extension://${extId}/src/options/options.html`);
-  assert.equal(await opts.inputValue('#token'), SECURE_TOKEN);
-  assert.equal(await opts.getAttribute('#token', 'type'), 'password');
-  await opts.click('#token-toggle');
-  assert.equal(await opts.getAttribute('#token', 'type'), 'text');
+  assert.equal(await opts.locator('#token').count(), 0);
+  assert.ok(!(await opts.content()).includes(SECURE_TOKEN));
   await opts.close();
+});
 
-  // The token must stay out of synced storage and out of the clip history.
-  const leaked = await worker.evaluate(async () => JSON.stringify([await chrome.storage.sync.get(null), await chrome.storage.local.get('history')]));
-  assert.ok(!leaked.includes(SECURE_TOKEN));
-
+await test('a relay with a stale token explains how to fix it', async () => {
+  const stale = await startRelay({ env: { GLIDE_WEBHOOK_URL: `${ORIGIN}/secure-hook`, GLIDE_TOKEN: 'old-token' } });
+  await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `http://127.0.0.1:${stale.address().port}/`);
+  await popup.reload();
+  await popup.waitForSelector('#view-result:not([hidden])');
+  await popup.click('#send');
+  await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
+  assert.match(await popup.textContent('#footer-note'), /Glide rejected the relay’s bearer token\. Update GLIDE_TOKEN/);
+  stale.close();
   await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/hook`);
-  await worker.evaluate(() => chrome.storage.local.set({ webhookToken: '' }));
 });
 
 await test('non-article page gets no badge and a quiet "Send anyway" button', async () => {
@@ -403,6 +499,56 @@ await test('options page lists the history', async () => {
 });
 
 await ctx.close();
+relay.close();
+
+// ---------------------------------------------------------------------------
+// 4. Upgrade from v1.1 (Glide URL + token stored) to a relay build
+// ---------------------------------------------------------------------------
+
+console.log('\nUpgrade');
+await test('updating replaces a stored Glide URL with the relay default and deletes any saved token', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'meditor-upgrade-'));
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'meditor-profile-'));
+  fs.cpSync(EXT, dir, { recursive: true });
+  const launch = () => chromium.launchPersistentContext(profile, {
+    channel: 'chromium', headless: true, args: [`--disable-extensions-except=${dir}`, `--load-extension=${dir}`],
+  });
+  const swOf = async (c) => c.serviceWorkers()[0] || c.waitForEvent('serviceworker');
+  try {
+    // 1. A v1.1 user: the Glide URL in sync storage and a token in local storage.
+    let browserCtx = await launch();
+    let sw = await swOf(browserCtx);
+    await sw.evaluate(async () => {
+      await new Promise((r) => setTimeout(r, 300)); // let onInstalled seeding finish first
+      await chrome.storage.sync.set({ webhookUrl: 'https://go.glideapps.com/api/container/plugin/webhook-trigger/APP/TRIGGER', autoSend: false });
+      await chrome.storage.local.set({ webhookToken: 'old-token' });
+    });
+    await browserCtx.close();
+
+    // 2. They unzip the relay build over the same folder (new default, new version) and restart.
+    fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ webhookUrl: 'https://meditor-relay.example.workers.dev/' }));
+    const mf = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+    mf.version = '9.9.9';
+    fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(mf, null, 2));
+
+    browserCtx = await launch();
+    sw = await swOf(browserCtx);
+    const state = await waitFor(async () => {
+      const s = await sw.evaluate(async () => ({ sync: await chrome.storage.sync.get(null), local: await chrome.storage.local.get(null) })).catch(() => null);
+      return s && !('webhookToken' in s.local) && !('webhookUrl' in s.sync) ? s : null;
+    }, 8000);
+    assert.ok(state, 'storage was not migrated');
+    assert.equal(state.sync.autoSend, false);
+    const p = await browserCtx.newPage();
+    await p.goto(`chrome-extension://${new URL(sw.url()).host}/src/options/options.html`);
+    assert.equal(await p.inputValue('#webhook'), 'https://meditor-relay.example.workers.dev/');
+    await browserCtx.close();
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(profile, { recursive: true, force: true });
+  }
+});
+
 server.close();
 
 console.log(failures ? `\n${failures} test(s) failed\n` : '\nAll tests passed\n');

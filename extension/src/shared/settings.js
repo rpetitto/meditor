@@ -1,48 +1,41 @@
 // Shared between the background worker, popup and options page (ES module).
 
-// The webhook URL works like a password (anyone holding it can post to your Glide
-// app), so it is not committed. `npm run package` fills it in from the gitignored
-// .webhook-url file (or $MEDITOR_WEBHOOK_URL); otherwise set it in Settings.
-export const DEFAULT_WEBHOOK_URL = '';
-// Glide webhook triggers can require `Authorization: Bearer <token>`. Same treatment:
-// filled in from .webhook-token / $MEDITOR_WEBHOOK_TOKEN at packaging time, or in Settings.
-export const DEFAULT_WEBHOOK_TOKEN = '';
+// Where clips are POSTed by default: normally your Meditor relay (relay/ in this repo),
+// which holds the Glide webhook URL and bearer token so neither ships in the extension.
+// It lives in /config.json, which `npm run package` fills in from the gitignored
+// .webhook-url file (or $MEDITOR_WEBHOOK_URL). It is read at runtime rather than
+// compiled into this module because Chrome can keep serving a stale copy of a service
+// worker's imported modules after an update. A user can still override it in Settings.
+let configPromise;
+export function getConfig() {
+  configPromise ||= fetch(chrome.runtime.getURL('config.json'), { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : {}))
+    .catch(() => ({}));
+  return configPromise;
+}
+
+export async function getDefaultWebhookUrl() {
+  const { webhookUrl } = await getConfig();
+  return typeof webhookUrl === 'string' ? webhookUrl.trim() : '';
+}
 
 export const DEFAULTS = Object.freeze({
-  webhookUrl: DEFAULT_WEBHOOK_URL,
+  webhookUrl: '',
   // Off by default: nothing leaves the browser unless you press "Send".
   autoSend: false,
   autoSendThreshold: 70,
 });
 
-// Secrets stay on this device (chrome.storage.local) and are never synced to the Google account.
-export const LOCAL_DEFAULTS = Object.freeze({
-  webhookToken: DEFAULT_WEBHOOK_TOKEN,
-});
-
 export const HISTORY_LIMIT = 100;
 
-/** Accepts "abc123", "Bearer abc123" or a whole "Authorization: Bearer abc123" line. */
-export function normalizeToken(value) {
-  return String(value ?? '')
-    .trim()
-    .replace(/^authorization\s*:\s*/i, '')
-    .replace(/^bearer\s+/i, '')
-    .trim();
-}
-
 export async function getSettings() {
-  const [synced, local] = await Promise.all([
-    chrome.storage.sync.get(DEFAULTS),
-    chrome.storage.local.get(LOCAL_DEFAULTS),
-  ]);
-  return { ...DEFAULTS, ...synced, webhookToken: normalizeToken(local.webhookToken) };
+  const [stored, fallback] = await Promise.all([chrome.storage.sync.get(DEFAULTS), getDefaultWebhookUrl()]);
+  // An empty stored URL means "use the built-in default".
+  return { ...DEFAULTS, ...stored, webhookUrl: stored.webhookUrl || fallback };
 }
 
 export async function saveSettings(patch) {
-  const { webhookToken, ...synced } = patch;
-  if (webhookToken !== undefined) await chrome.storage.local.set({ webhookToken: normalizeToken(webhookToken) });
-  if (Object.keys(synced).length) await chrome.storage.sync.set(synced);
+  await chrome.storage.sync.set(patch);
   return getSettings();
 }
 

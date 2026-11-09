@@ -429,7 +429,7 @@ async function send() {
     note.classList.add('bad');
     note.textContent = res?.error || 'Unknown error';
     note.title = res?.response || '';
-    if (res?.authError || res?.needsSetup) {
+    if (res?.needsSetup) {
       const fix = document.createElement('button');
       fix.type = 'button';
       fix.className = 'footer__fix';
