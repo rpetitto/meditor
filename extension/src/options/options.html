@@ -68,23 +68,37 @@
       <div class="panel__head">
         <span class="panel__icon"><svg><use href="#i-bolt"/></svg></span>
         <div>
-          <h2>Auto-send</h2>
-          <p>Send articles automatically as soon as you open them, without clicking the toolbar button.</p>
+          <h2>Automatic detection</h2>
+          <p>By default Meditor reads a page only when you click its icon. Turn this on to see the <b>✓</b> badge on news articles as you browse.</p>
         </div>
         <label class="switch">
-          <input type="checkbox" id="auto" />
+          <input type="checkbox" id="detect" />
           <span class="switch__track"><span class="switch__thumb"></span></span>
-          <span class="sr">Enable auto-send</span>
+          <span class="sr">Detect articles automatically</span>
         </label>
       </div>
+      <p class="hint" id="detect-hint">Chrome will ask to let Meditor read pages on all sites. Detection runs inside your browser, and nothing is sent until you click Send.</p>
 
-      <div class="threshold" id="threshold-row">
-        <div class="threshold__top">
-          <span class="field__label">Minimum confidence</span>
-          <output id="threshold-out">70%</output>
+      <div class="subpanel" id="auto-row">
+        <div class="subpanel__head">
+          <div>
+            <h3>Auto-send articles</h3>
+            <p>Send each detected article as soon as you open it, without clicking the icon.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="auto" />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+            <span class="sr">Enable auto-send</span>
+          </label>
         </div>
-        <input type="range" id="threshold" min="55" max="100" step="5" />
-        <p class="hint">Only pages scored at or above this confidence are sent. Each URL is sent once; you can always resend from the popup.</p>
+        <div class="threshold" id="threshold-row">
+          <div class="threshold__top">
+            <span class="field__label">Minimum confidence</span>
+            <output id="threshold-out">70%</output>
+          </div>
+          <input type="range" id="threshold" min="55" max="100" step="5" />
+          <p class="hint">Only pages scored at or above this confidence are sent. Each URL is sent once; you can always resend from the popup.</p>
+        </div>
       </div>
     </section>
 

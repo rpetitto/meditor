@@ -251,12 +251,33 @@ const SITE = SHOTS ? 'http://www.dailyledger.test' : ORIGIN;
 const GLIDE = 'https://meditor-relay.your-subdomain.workers.dev/';
 const LOCAL_HOOK = `${ORIGIN}/hook`;
 
+const RAW = path.join(ROOT, 'store', 'raw');
+if (SHOTS) fs.mkdirSync(RAW, { recursive: true });
+
+// Chrome's permission prompt can't be clicked in automation, so the end-to-end run uses a
+// copy of the extension with all-sites access already granted: the state after a user
+// clicks the toolbar icon (activeTab) or approves automatic detection in Settings.
+const EXT_RUN = fs.mkdtempSync(path.join(os.tmpdir(), 'meditor-ext-'));
+fs.cpSync(EXT, EXT_RUN, { recursive: true });
+const runManifest = JSON.parse(fs.readFileSync(path.join(EXT_RUN, 'manifest.json'), 'utf8'));
+runManifest.host_permissions = ['http://*/*', 'https://*/*'];
+fs.writeFileSync(path.join(EXT_RUN, 'manifest.json'), JSON.stringify(runManifest, null, 2));
+
+await test('the shipped manifest asks for no site access up front', async () => {
+  const mf = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
+  assert.equal(mf.content_scripts, undefined);
+  assert.equal(mf.host_permissions, undefined);
+  assert.deepEqual(mf.permissions.sort(), ['activeTab', 'scripting', 'storage']);
+  assert.deepEqual(mf.optional_host_permissions.sort(), ['http://*/*', 'https://*/*']);
+});
+
 const ctx = await chromium.launchPersistentContext('', {
   channel: 'chromium',
   headless: true,
+  deviceScaleFactor: SHOTS ? 2 : 1,
   args: [
-    `--disable-extensions-except=${EXT}`,
-    `--load-extension=${EXT}`,
+    `--disable-extensions-except=${EXT_RUN}`,
+    `--load-extension=${EXT_RUN}`,
     `--host-resolver-rules=MAP www.dailyledger.test:80 127.0.0.1:${server.address().port}`,
   ],
 });
@@ -276,6 +297,7 @@ await test('service worker boots and seeds default settings', async () => {
   // The source ships without a default webhook (package.sh bakes in the relay URL), and the
   // URL is never seeded into storage, so a newer build's default always takes effect.
   assert.equal('webhookUrl' in settings, false);
+  assert.equal(settings.autoDetect, false);
   assert.equal(settings.autoSend, false);
   assert.equal(settings.autoSendThreshold, 70);
 });
@@ -308,13 +330,23 @@ const waitFor = async (fn, ms = 5000) => {
   }
 };
 
-await test('toolbar badge marks the article', async () => {
-  assert.equal(await waitFor(async () => (await badge()) === '✓' && '✓'), '✓');
+const registeredScripts = () => worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).length);
+
+await test('with automatic detection off, nothing runs on pages until Meditor is opened', async () => {
+  await new Promise((r) => setTimeout(r, 800));
+  assert.equal(await badge(), '');
+  assert.equal(await registeredScripts(), 0);
 });
 
 const popup = await ctx.newPage();
 await popup.setViewportSize({ width: 384, height: 600 });
 await popup.goto(`chrome-extension://${extId}/src/popup/popup.html?tabId=${tabId}`);
+
+await test('opening Meditor reads the page on demand and badges it', async () => {
+  await popup.waitForSelector('#view-result:not([hidden])');
+  assert.equal(await popup.textContent('#verdict-title'), 'News article detected');
+  assert.equal(await waitFor(async () => (await badge()) === '✓' && '✓'), '✓');
+});
 
 await test('without a webhook, the send button asks for one instead', async () => {
   await popup.waitForSelector('#view-result:not([hidden])');
@@ -339,10 +371,10 @@ await test('popup shows verdict, preview and editable fields', async () => {
 if (SHOTS) {
   await popup.waitForFunction(() => document.getElementById('preview-img').complete);
   await popup.waitForTimeout(900);
-  await popup.screenshot({ path: path.join(ROOT, 'docs', 'popup.png') });
+  await popup.screenshot({ path: path.join(RAW, 'popup-main.png') });
   await popup.emulateMedia({ colorScheme: 'dark' });
   await popup.waitForTimeout(300);
-  await popup.screenshot({ path: path.join(ROOT, 'docs', 'popup-dark.png') });
+  await popup.screenshot({ path: path.join(RAW, 'popup-dark.png') });
   await popup.emulateMedia({ colorScheme: 'light' });
 }
 
@@ -353,13 +385,13 @@ await test('JSON tab shows exactly the webhook schema', async () => {
   if (SHOTS) {
     await popup.evaluate(() => { document.getElementById('main').scrollTop = 1e4; });
     await popup.waitForTimeout(400);
-    await popup.screenshot({ path: path.join(ROOT, 'docs', 'popup-json.png') });
+    await popup.screenshot({ path: path.join(RAW, 'popup-json.png') });
   }
   await popup.click('#tab-fields');
   if (SHOTS) {
     await popup.evaluate(() => { document.getElementById('main').scrollTop = 1e4; });
     await popup.waitForTimeout(300);
-    await popup.screenshot({ path: path.join(ROOT, 'docs', 'popup-fields.png') });
+    await popup.screenshot({ path: path.join(RAW, 'popup-fields.png') });
     await popup.evaluate(() => { document.getElementById('main').scrollTop = 0; });
   }
 });
@@ -452,6 +484,36 @@ await test('a relay with a stale token explains how to fix it', async () => {
   await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/hook`);
 });
 
+await test('turning on automatic detection in Settings badges pages as you browse', async () => {
+  const opts = await ctx.newPage();
+  await opts.goto(`chrome-extension://${extId}/src/options/options.html`);
+  await opts.waitForTimeout(300);
+  assert.equal(await opts.isChecked('#detect'), false);
+  assert.equal(await opts.isDisabled('#auto'), true);
+
+  await opts.check('#detect');
+  assert.equal(await waitFor(async () => (await registeredScripts()) === 1), true);
+  assert.equal(await opts.isDisabled('#auto'), false);
+  const p = await ctx.newPage();
+  await p.goto(`${SITE}/science/researchers-map-deep-sea-vents`);
+  const t = await newestTabId();
+  const tBadge = () => worker.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), t);
+  assert.equal(await waitFor(async () => (await tBadge()) === '✓' && '✓'), '✓');
+  await p.close();
+
+  // After another tab was opened, headless Chrome stops producing frames for this one, which
+  // stalls Playwright's "stable" wait. force skips that wait but still clicks for real
+  // (a trusted user gesture, as chrome.permissions.request requires).
+  await opts.bringToFront();
+  await opts.uncheck('#detect', { force: true });
+  assert.equal(await waitFor(async () => (await registeredScripts()) === 0), true);
+  assert.equal(await opts.isDisabled('#auto'), true);
+
+  await opts.check('#detect', { force: true }); // back on for the tests below
+  assert.equal(await waitFor(async () => (await registeredScripts()) === 1), true);
+  await opts.close();
+});
+
 await test('non-article page gets no badge and a quiet "Send anyway" button', async () => {
   const home = await ctx.newPage();
   await home.goto(`${SITE}/`);
@@ -469,7 +531,7 @@ await test('non-article page gets no badge and a quiet "Send anyway" button', as
 });
 
 await test('auto-send posts once per article when enabled', async () => {
-  await worker.evaluate(() => chrome.storage.sync.set({ autoSend: true, autoSendThreshold: 55 }));
+  await worker.evaluate(() => chrome.storage.sync.set({ autoDetect: true, autoSend: true, autoSendThreshold: 55 }));
   const before = received.length;
   const p = await ctx.newPage();
   await p.goto(`${SITE}/science/researchers-map-deep-sea-vents`);
@@ -489,17 +551,21 @@ await test('options page lists the history', async () => {
   await opts.waitForSelector('.history li');
   assert.ok(await opts.locator('.history li').count() >= 3);
   if (SHOTS) {
-    await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), GLIDE);
+    await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url, autoSend: false, autoSendThreshold: 70 }), GLIDE);
     await opts.reload();
     await opts.waitForSelector('.history li');
     await opts.waitForTimeout(500);
-    await opts.screenshot({ path: path.join(ROOT, 'docs', 'options.png'), fullPage: true });
+    await opts.screenshot({ path: path.join(ROOT, 'docs', 'options.png'), fullPage: true, scale: 'css' });
+    await opts.setViewportSize({ width: 1280, height: 800 });
+    await opts.waitForTimeout(300);
+    await opts.screenshot({ path: path.join(RAW, 'options-1280.png'), scale: 'css' });
   }
   await opts.close();
 });
 
 await ctx.close();
 relay.close();
+fs.rmSync(EXT_RUN, { recursive: true, force: true });
 
 // ---------------------------------------------------------------------------
 // 4. Upgrade from v1.1 (Glide URL + token stored) to a relay build

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Meditor icon: a news page being sent. Original artwork. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2c5aa0"/>
+      <stop offset="1" stop-color="#132a52"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".16"/>
+      <stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="lift" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#06142c" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#tile)"/>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#sheen)"/>
+  <g filter="url(#lift)">
+    <!-- page with folded corner -->
+    <path d="M36 24h40l20 20v56a8 8 0 0 1-8 8H36a8 8 0 0 1-8-8V32a8 8 0 0 1 8-8z" fill="#ffffff"/>
+    <path d="M76 24v14a6 6 0 0 0 6 6h14z" fill="#c6dbf1"/>
+    <!-- headline + body lines -->
+    <rect x="38" y="40" width="30" height="10" rx="3" fill="#1e407c"/>
+    <rect x="38" y="58" width="48" height="6" rx="3" fill="#bccde6"/>
+    <rect x="38" y="70" width="48" height="6" rx="3" fill="#bccde6"/>
+    <rect x="38" y="82" width="28" height="6" rx="3" fill="#bccde6"/>
+  </g>
+  <!-- send badge -->
+  <circle cx="93" cy="93" r="22" fill="#96bee6" stroke="#132a52" stroke-width="6"/>
+  <path d="M84.5 101.5 101 85M89 85h12v12" fill="none" stroke="#132a52" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

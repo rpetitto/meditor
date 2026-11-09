@@ -21,6 +21,9 @@ export async function getDefaultWebhookUrl() {
 
 export const DEFAULTS = Object.freeze({
   webhookUrl: '',
+  // Off by default: Meditor reads a page only when you click its icon (activeTab).
+  // Turning this on asks Chrome for access to all sites and shows the badge as you browse.
+  autoDetect: false,
   // Off by default: nothing leaves the browser unless you press "Send".
   autoSend: false,
   autoSendThreshold: 70,

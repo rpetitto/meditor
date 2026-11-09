@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Meditor — News Clipper",
   "short_name": "Meditor",
-  "version": "1.2.0",
-  "description": "Detects news articles and clips their URL, title, image, publish date and authors to your Glide webhook.",
+  "version": "1.3.0",
+  "description": "Spots news articles and clips their link, headline, lead image, publish date and authors to your Glide app.",
   "minimum_chrome_version": "110",
   "icons": {
     "16": "icons/icon16.png",
@@ -25,14 +25,14 @@
     "type": "module"
   },
   "options_page": "src/options/options.html",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "optional_host_permissions": ["https://*/*", "http://*/*"],
-  "content_scripts": [
-    {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["src/content/extract.js"],
-      "run_at": "document_idle"
-    }
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
   ],
   "commands": {
     "_execute_action": {

@@ -5,3 +5,4 @@ dist/
 
 # Default webhook (your relay URL) baked into packaged builds (see scripts/package.sh)
 .webhook-url
+store/raw/

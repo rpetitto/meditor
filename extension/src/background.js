@@ -128,7 +128,9 @@ async function onDetected(tabId, result) {
   await setBadge(tabId, result.detection.verdict, result);
 
   const settings = await getSettings();
-  if (!settings.autoSend || !settings.webhookUrl) return;
+  // Auto-send rides on automatic detection; a page read because the user clicked the
+  // icon must never be sent without them pressing Send.
+  if (!settings.autoDetect || !settings.autoSend || !settings.webhookUrl) return;
   if (result.detection.verdict !== 'article') return;
   if (result.detection.confidence < settings.autoSendThreshold) return;
   if (!url || inflight.has(url)) return;
@@ -196,11 +198,56 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     chrome.runtime.openOptionsPage().catch(() => {});
   }
 
-  if (reason === 'install') {
-    // Run detection on tabs that were already open before the install.
-    const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }).catch(() => []);
-    for (const tab of tabs) {
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['src/content/extract.js'] }).catch(() => {});
-    }
-  }
+  await syncDetection();
 });
+
+// -----------------------------------------------------------------------------
+// Automatic detection (opt-in)
+// -----------------------------------------------------------------------------
+// Without it Meditor only reads a page when the user clicks the icon (activeTab). With
+// it, the content script is registered for every http(s) page, which needs the optional
+// all-sites host permission the user grants from Settings.
+
+const DETECT_ID = 'meditor-detect';
+const ALL_SITES = ['http://*/*', 'https://*/*'];
+let syncing = Promise.resolve();
+
+function syncDetection() {
+  // Serialized so overlapping triggers can't register the script twice.
+  syncing = syncing.then(applyDetection, applyDetection);
+  return syncing;
+}
+
+async function applyDetection() {
+  try {
+    const { autoDetect } = await getSettings();
+    const granted = await chrome.permissions.contains({ origins: ALL_SITES });
+    const want = autoDetect && granted;
+    const registered = (await chrome.scripting.getRegisteredContentScripts({ ids: [DETECT_ID] })).length > 0;
+    if (want && !registered) {
+      await chrome.scripting.registerContentScripts([{
+        id: DETECT_ID,
+        matches: ALL_SITES,
+        js: ['src/content/extract.js'],
+        runAt: 'document_idle',
+        persistAcrossSessions: true,
+      }]);
+      // Badge the tabs that are already open, too.
+      const tabs = await chrome.tabs.query({ url: ALL_SITES }).catch(() => []);
+      for (const tab of tabs) {
+        chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['src/content/extract.js'] }).catch(() => {});
+      }
+    } else if (!want && registered) {
+      await chrome.scripting.unregisterContentScripts({ ids: [DETECT_ID] });
+    }
+  } catch (err) {
+    console.warn('Meditor: could not update automatic detection', err);
+  }
+}
+
+chrome.permissions.onAdded.addListener(syncDetection);
+chrome.permissions.onRemoved.addListener(syncDetection);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && 'autoDetect' in changes) syncDetection();
+});
+chrome.runtime.onStartup.addListener(syncDetection);

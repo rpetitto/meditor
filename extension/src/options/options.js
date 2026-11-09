@@ -77,11 +77,20 @@ async function onReset() {
   setStatus('ok', 'Restored the default webhook');
 }
 
-function renderAuto(settings) {
-  $('auto').checked = settings.autoSend;
+const ALL_SITES = ['http://*/*', 'https://*/*'];
+const DETECT_HINT = 'Chrome will ask to let Meditor read pages on all sites. Detection runs inside your browser, and nothing is sent until you click Send.';
+
+async function renderAuto(settings) {
+  settings ||= await getSettings();
+  const granted = await chrome.permissions.contains({ origins: ALL_SITES }).catch(() => false);
+  const detecting = settings.autoDetect && granted;
+  $('detect').checked = detecting;
+  $('auto-row').classList.toggle('is-off', !detecting);
+  $('auto').disabled = !detecting;
+  $('auto').checked = detecting && settings.autoSend;
   $('threshold').value = String(settings.autoSendThreshold);
   $('threshold-out').textContent = `${settings.autoSendThreshold}%`;
-  $('threshold-row').classList.toggle('is-off', !settings.autoSend);
+  $('threshold-row').classList.toggle('is-off', !(detecting && settings.autoSend));
 }
 
 async function renderHistory() {
@@ -154,6 +163,32 @@ async function init() {
   $('webhook').addEventListener('keydown', (e) => { if (e.key === 'Enter') onSave(); });
   $('webhook').addEventListener('input', () => setStatus('', ''));
 
+  $('detect').addEventListener('change', async (e) => {
+    const hint = $('detect-hint');
+    hint.classList.remove('bad');
+    hint.textContent = DETECT_HINT;
+    if (e.target.checked) {
+      // This must be the first await: Chrome only shows the prompt during the click's user gesture.
+      let granted = false;
+      try {
+        granted = await chrome.permissions.request({ origins: ALL_SITES });
+      } catch {
+        granted = false;
+      }
+      if (!granted) {
+        hint.classList.add('bad');
+        hint.textContent = 'Chrome didn’t grant access, so automatic detection stays off. You can still click the Meditor icon on any article.';
+        renderAuto();
+        return;
+      }
+      renderAuto(await saveSettings({ autoDetect: true }));
+    } else {
+      await saveSettings({ autoDetect: false, autoSend: false });
+      // Give the all-sites access back when it's no longer needed.
+      await chrome.permissions.remove({ origins: ALL_SITES }).catch(() => {});
+      renderAuto();
+    }
+  });
   $('auto').addEventListener('change', async (e) => renderAuto(await saveSettings({ autoSend: e.target.checked })));
   $('threshold').addEventListener('input', (e) => { $('threshold-out').textContent = `${e.target.value}%`; });
   $('threshold').addEventListener('change', async (e) => renderAuto(await saveSettings({ autoSendThreshold: Number(e.target.value) })));
@@ -163,9 +198,11 @@ async function init() {
     renderHistory();
   });
 
+  chrome.permissions.onAdded.addListener(() => renderAuto());
+  chrome.permissions.onRemoved.addListener(() => renderAuto());
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.history) renderHistory();
-    if (area === 'sync') getSettings().then(renderAuto);
+    if (area === 'sync') renderAuto();
   });
 }
 

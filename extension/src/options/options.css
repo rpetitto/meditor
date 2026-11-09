@@ -142,6 +142,23 @@ input[type="url"]:focus { outline: none; border-color: var(--focus); box-shadow:
 .switch input:checked + .switch__track .switch__thumb { transform: translateX(18px); }
 .switch input:focus-visible + .switch__track { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+.panel__head p b { color: var(--ok); }
+.subpanel {
+  display: grid;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  transition: opacity .2s;
+}
+.subpanel.is-off { opacity: .5; }
+.subpanel.is-off .switch { pointer-events: none; }
+.subpanel__head { display: flex; align-items: flex-start; gap: 14px; }
+.subpanel__head > div { flex: 1; min-width: 0; }
+.subpanel h3 { margin: 0; font-size: 14px; }
+.subpanel__head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.hint.bad { color: var(--bad); }
 .threshold { display: grid; gap: 8px; transition: opacity .2s; }
 .threshold.is-off { opacity: .45; pointer-events: none; }
 .threshold__top { display: flex; justify-content: space-between; align-items: baseline; }
