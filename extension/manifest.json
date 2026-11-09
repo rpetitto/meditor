@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Meditor — News Clipper",
   "short_name": "Meditor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Detects news articles and clips their URL, title, image, publish date and authors to your Glide webhook.",
   "minimum_chrome_version": "110",
   "icons": {

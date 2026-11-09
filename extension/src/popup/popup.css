@@ -444,6 +444,17 @@ input::placeholder { color: var(--muted); opacity: .8; }
 .footer__note.ok { color: var(--ok); }
 .footer__note.bad { color: var(--bad); }
 .footer__note code { font: 10.5px var(--mono); }
+.footer__note.bad { flex-wrap: wrap; line-height: 1.35; }
+.footer__fix {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: 650 11px var(--sans);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
 
 /* ---------------------------------------------------------------- Empty / loading */
 

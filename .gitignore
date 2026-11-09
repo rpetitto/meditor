@@ -5,3 +5,4 @@ dist/
 
 # Secret webhook URL baked into packaged builds (see scripts/package.sh)
 .webhook-url
+.webhook-token

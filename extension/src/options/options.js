@@ -47,13 +47,17 @@ async function saveWebhook() {
     setStatus('bad', `Permission to contact ${shortHost(url)} was declined.`);
     return false;
   }
-  await saveSettings({ webhookUrl: url });
+  const saved = await saveSettings({ webhookUrl: url, webhookToken: $('token').value });
   $('webhook').value = url;
+  $('token').value = saved.webhookToken;
   return true;
 }
 
 async function onSave() {
-  if (await saveWebhook()) setStatus('ok', 'Saved');
+  if (await saveWebhook()) {
+    const { webhookToken } = await getSettings();
+    setStatus('ok', webhookToken ? 'Saved, with bearer token' : 'Saved');
+  }
 }
 
 async function onTest() {
@@ -63,7 +67,7 @@ async function onTest() {
   setStatus('', 'Sending test…');
   const res = await chrome.runtime.sendMessage({ type: 'meditor:send', payload: SAMPLE, source: 'test' }).catch((e) => ({ ok: false, error: String(e) }));
   btn.disabled = false;
-  if (res?.ok) setStatus('ok', `Webhook answered HTTP ${res.status}`);
+  if (res?.ok) setStatus('ok', `Webhook accepted the test (HTTP ${res.status})`);
   else setStatus('bad', res?.error || 'Test failed');
 }
 
@@ -124,7 +128,7 @@ async function renderHistory() {
     const tag = document.createElement('span');
     tag.className = `tag${h.ok ? '' : ' bad'}`;
     tag.innerHTML = `<svg><use href="#i-${h.ok ? 'check' : 'alert'}"/></svg>`;
-    tag.append(h.ok ? String(h.status || 'OK') : 'Failed');
+    tag.append(h.ok ? String(h.status || 'OK') : h.status ? `HTTP ${h.status}` : 'Failed');
     if (!h.ok) tag.title = h.error || '';
 
     li.append(thumb, main, tag);
@@ -135,6 +139,7 @@ async function renderHistory() {
 async function init() {
   const settings = await getSettings();
   $('webhook').value = settings.webhookUrl;
+  $('token').value = settings.webhookToken;
   $('webhook').placeholder = 'https://go.glideapps.com/api/container/plugin/webhook-trigger/…';
   // Builds packaged without a default webhook have nothing to reset to.
   $('reset').hidden = !DEFAULT_WEBHOOK_URL;
@@ -150,6 +155,13 @@ async function init() {
   $('reset').addEventListener('click', onReset);
   $('webhook').addEventListener('keydown', (e) => { if (e.key === 'Enter') onSave(); });
   $('webhook').addEventListener('input', () => setStatus('', ''));
+  $('token').addEventListener('input', () => setStatus('', ''));
+  $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') onSave(); });
+  $('token-toggle').addEventListener('click', () => {
+    const show = $('token').type === 'password';
+    $('token').type = show ? 'text' : 'password';
+    $('token-toggle').textContent = show ? 'Hide' : 'Show';
+  });
 
   $('auto').addEventListener('change', async (e) => renderAuto(await saveSettings({ autoSend: e.target.checked })));
   $('threshold').addEventListener('input', (e) => { $('threshold-out').textContent = `${e.target.value}%`; });

@@ -36,18 +36,23 @@ const ROUTES = {
   '/products/trail-runner-3': 'product.html',
 };
 const received = [];
+const SECURE_TOKEN = 'test-token-7f3a9c';
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/hook') {
+  // /hook accepts anything; /secure-hook behaves like a Glide trigger with a bearer token.
+  if (url.pathname === '/hook' || url.pathname === '/secure-hook') {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'content-type, accept');
+    res.setHeader('Access-Control-Allow-Headers', 'content-type, accept, authorization');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.writeHead(204).end();
     let body = '';
     req.on('data', (c) => { body += c; });
     req.on('end', () => {
-      received.push({ headers: req.headers, body });
+      if (url.pathname === '/secure-hook' && req.headers.authorization !== `Bearer ${SECURE_TOKEN}`) {
+        return res.writeHead(401, { 'Content-Type': 'application/json' }).end('{"error":"Unauthorized"}');
+      }
+      received.push({ path: url.pathname, headers: req.headers, body });
       res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}');
     });
     return;
@@ -301,6 +306,54 @@ await test('a failing webhook shows an error instead of "sent"', async () => {
   await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
   assert.match(await popup.textContent('#footer-note'), /Network error|responded 404/);
   await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/hook`);
+});
+
+await test('a webhook that needs a bearer token reports the 401 and links to Settings', async () => {
+  await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/secure-hook`);
+  await popup.reload();
+  await popup.waitForSelector('#view-result:not([hidden])');
+  await popup.click('#send');
+  await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
+  assert.match(await popup.textContent('#footer-note'), /requires a bearer token \(HTTP 401\)/);
+  assert.equal(await popup.textContent('#footer-note .footer__fix'), 'Open Settings');
+});
+
+await test('a wrong bearer token is reported as rejected', async () => {
+  await worker.evaluate(() => chrome.storage.local.set({ webhookToken: 'not-the-token' }));
+  await popup.reload();
+  await popup.waitForSelector('#view-result:not([hidden])');
+  await popup.click('#send');
+  await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
+  assert.match(await popup.textContent('#footer-note'), /rejected the bearer token/);
+});
+
+await test('the bearer token from Settings is sent as an Authorization header', async () => {
+  const before = received.length;
+  // Saved as pasted from Glide, "Bearer " prefix included; Meditor normalizes it.
+  await worker.evaluate((t) => chrome.storage.local.set({ webhookToken: `Bearer ${t}` }), SECURE_TOKEN);
+  await popup.reload();
+  await popup.waitForSelector('#view-result:not([hidden])');
+  await popup.click('#send');
+  await popup.waitForSelector('#send[data-state="sent"]', { timeout: 8000 });
+  assert.equal(received.length, before + 1);
+  assert.equal(received.at(-1).path, '/secure-hook');
+  assert.equal(received.at(-1).headers.authorization, `Bearer ${SECURE_TOKEN}`);
+  assert.deepEqual(Object.keys(JSON.parse(received.at(-1).body)), ['url', 'title', 'image', 'published_date', 'authors']);
+
+  const opts = await ctx.newPage();
+  await opts.goto(`chrome-extension://${extId}/src/options/options.html`);
+  assert.equal(await opts.inputValue('#token'), SECURE_TOKEN);
+  assert.equal(await opts.getAttribute('#token', 'type'), 'password');
+  await opts.click('#token-toggle');
+  assert.equal(await opts.getAttribute('#token', 'type'), 'text');
+  await opts.close();
+
+  // The token must stay out of synced storage and out of the clip history.
+  const leaked = await worker.evaluate(async () => JSON.stringify([await chrome.storage.sync.get(null), await chrome.storage.local.get('history')]));
+  assert.ok(!leaked.includes(SECURE_TOKEN));
+
+  await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/hook`);
+  await worker.evaluate(() => chrome.storage.local.set({ webhookToken: '' }));
 });
 
 await test('non-article page gets no badge and a quiet "Send anyway" button', async () => {

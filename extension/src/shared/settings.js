@@ -4,6 +4,9 @@
 // app), so it is not committed. `npm run package` fills it in from the gitignored
 // .webhook-url file (or $MEDITOR_WEBHOOK_URL); otherwise set it in Settings.
 export const DEFAULT_WEBHOOK_URL = '';
+// Glide webhook triggers can require `Authorization: Bearer <token>`. Same treatment:
+// filled in from .webhook-token / $MEDITOR_WEBHOOK_TOKEN at packaging time, or in Settings.
+export const DEFAULT_WEBHOOK_TOKEN = '';
 
 export const DEFAULTS = Object.freeze({
   webhookUrl: DEFAULT_WEBHOOK_URL,
@@ -12,15 +15,34 @@ export const DEFAULTS = Object.freeze({
   autoSendThreshold: 70,
 });
 
+// Secrets stay on this device (chrome.storage.local) and are never synced to the Google account.
+export const LOCAL_DEFAULTS = Object.freeze({
+  webhookToken: DEFAULT_WEBHOOK_TOKEN,
+});
+
 export const HISTORY_LIMIT = 100;
 
+/** Accepts "abc123", "Bearer abc123" or a whole "Authorization: Bearer abc123" line. */
+export function normalizeToken(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/^authorization\s*:\s*/i, '')
+    .replace(/^bearer\s+/i, '')
+    .trim();
+}
+
 export async function getSettings() {
-  const stored = await chrome.storage.sync.get(DEFAULTS);
-  return { ...DEFAULTS, ...stored };
+  const [synced, local] = await Promise.all([
+    chrome.storage.sync.get(DEFAULTS),
+    chrome.storage.local.get(LOCAL_DEFAULTS),
+  ]);
+  return { ...DEFAULTS, ...synced, webhookToken: normalizeToken(local.webhookToken) };
 }
 
 export async function saveSettings(patch) {
-  await chrome.storage.sync.set(patch);
+  const { webhookToken, ...synced } = patch;
+  if (webhookToken !== undefined) await chrome.storage.local.set({ webhookToken: normalizeToken(webhookToken) });
+  if (Object.keys(synced).length) await chrome.storage.sync.set(synced);
   return getSettings();
 }
 

@@ -32,13 +32,23 @@ Clips go to your Glide **webhook trigger** URL
 ## Install
 
 1. Get the extension folder, either way:
-   - Unzip a packaged build (`meditor-extension-v1.0.0.zip`), which already has your webhook built in.
+   - Unzip a packaged build (`meditor-extension-v1.1.0.zip`), which already has your webhook built in.
    - Or clone this repo and use the `extension/` folder.
 2. Open `chrome://extensions` and switch on **Developer mode** (top right).
 3. Click **Load unpacked** and pick the unzipped folder (or `extension/`).
 4. Pin Meditor from the puzzle-piece menu so the shield stays on your toolbar.
 
 If the build has no webhook built in, Settings opens on install. Paste your Glide webhook URL and press **Save**.
+
+### Glide bearer token (fixes HTTP 401)
+
+If your Glide webhook trigger has a **bearer token**, Glide rejects any request without it with **401 Unauthorized**. To fix it:
+
+1. In Glide, open the workflow, select the **Webhook** trigger, and copy the bearer token from the right-hand panel.
+2. In Meditor **Settings**, paste it into **Bearer token**. Either `abc123` or `Bearer abc123` works.
+3. Press **Save**, then **Send test payload** to confirm.
+
+Meditor sends the token as `Authorization: Bearer <token>`. It is stored only on this device (`chrome.storage.local`), is never synced, and is never written to the clip history. If you'd rather not use a token, delete it on the Glide trigger (the ✕ button), but then anyone with the URL can post to your app.
 
 Works in Chrome 110+ and other Chromium browsers (Edge, Brave, Arc).
 
@@ -49,9 +59,11 @@ Anyone holding a Glide webhook trigger URL can post rows into your app, so treat
 - a gitignored `.webhook-url` file at the repo root, or
 - the `MEDITOR_WEBHOOK_URL` environment variable
 
+The bearer token works the same way, from `.webhook-token` or `MEDITOR_WEBHOOK_TOKEN`.
+
 ```bash
 echo 'https://go.glideapps.com/api/container/plugin/webhook-trigger/<app>/<trigger>' > .webhook-url
-npm run package      # → dist/meditor-extension-v1.0.0.zip with that URL as the default
+npm run package      # → dist/meditor-extension-v<version>.zip with that URL as the default
 ```
 
 If a URL ever leaks, rotate it in Glide: delete the webhook trigger and create a new one.
@@ -68,7 +80,7 @@ If a URL ever leaks, rotate it in Glide: delete the webhook trigger and create a
 
 Right-click the icon and choose **Options**, or click the gear in the popup.
 
-- **Webhook URL**: change the destination, send a test payload, or reset to the built-in default. Saving a URL on another host asks Chrome for permission to contact that host only.
+- **Webhook URL** and **Bearer token**: change the destination, send a test payload, or reset to the built-in default. Saving a URL on another host asks Chrome for permission to contact that host only.
 - **Auto-send** (off by default): sends articles as soon as you open them if their score meets your minimum confidence (default 70%). Each URL is sent only once.
 - **Recent clips**: the last 100 sends with status, kept only in this browser.
 
@@ -125,7 +137,7 @@ npm install          # Playwright for the tests
 npm test             # extractor + full extension end-to-end tests
 npm run screenshots  # tests, plus refreshed images in docs/
 npm run icons        # rebuild icons from assets/logo-source.png
-npm run package      # dist/meditor-extension-v<version>.zip (+ .webhook-url, if present)
+npm run package      # dist/meditor-extension-v<version>.zip (+ .webhook-url / .webhook-token, if present)
 ```
 
 The end-to-end tests load the real extension in Chromium and drive the badge, popup, editing, sending, error handling, auto-send and settings page. They post to a local stand-in webhook, never the real Glide one.

@@ -53,7 +53,7 @@ async function lastSuccessfulSend(url) {
 
 async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
   const payload = toPayload(rawPayload);
-  const { webhookUrl } = await getSettings();
+  const { webhookUrl, webhookToken } = await getSettings();
   const entry = { id: crypto.randomUUID(), sentAt: Date.now(), source, payload, webhookUrl, ok: false };
 
   if (!payload.url) {
@@ -76,7 +76,11 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
   try {
     const res = await fetch(target.href, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/plain, */*' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/plain, */*',
+        ...(webhookToken ? { Authorization: `Bearer ${webhookToken}` } : {}),
+      },
       body: JSON.stringify(payload),
       signal: controller.signal,
       credentials: 'omit',
@@ -84,7 +88,14 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
     });
     const body = (await res.text().catch(() => '')).slice(0, 500);
     Object.assign(entry, { ok: res.ok, status: res.status, response: body });
-    if (!res.ok) entry.error = `Webhook responded ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
+    if (res.status === 401 || res.status === 403) {
+      entry.authError = true;
+      entry.error = webhookToken
+        ? `The webhook rejected the bearer token (HTTP ${res.status}). Copy it again from the Glide trigger into Settings.`
+        : `The webhook requires a bearer token (HTTP ${res.status}). Add it in Settings.`;
+    } else if (!res.ok) {
+      entry.error = `Webhook responded ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
+    }
   } catch (err) {
     let error = err?.name === 'AbortError' ? 'The webhook did not respond within 20 seconds.' : `Network error: ${err?.message || err}`;
     if (err?.name !== 'AbortError') {
@@ -99,7 +110,14 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
   if (source !== 'test') await addHistory(entry);
   if (entry.ok && tabId != null) await setBadge(tabId, 'sent');
 
-  return { ok: entry.ok, status: entry.status, error: entry.error, response: entry.response, sentAt: entry.sentAt };
+  return {
+    ok: entry.ok,
+    status: entry.status,
+    error: entry.error,
+    authError: !!entry.authError,
+    response: entry.response,
+    sentAt: entry.sentAt,
+  };
 }
 
 // -----------------------------------------------------------------------------

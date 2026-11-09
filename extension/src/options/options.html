@@ -44,6 +44,14 @@
         <span class="field__label">Webhook URL</span>
         <input id="webhook" type="url" spellcheck="false" autocomplete="off" />
       </label>
+      <div class="field">
+        <label class="field__label" for="token">Bearer token</label>
+        <div class="secret">
+          <input id="token" type="password" spellcheck="false" autocomplete="off" placeholder="Paste the token from your Glide webhook trigger" />
+          <button type="button" class="btn btn--ghost btn--sm" id="token-toggle" aria-controls="token">Show</button>
+        </div>
+        <p class="hint">In Glide, open the workflow's <b>Webhook</b> trigger and copy its bearer token. Meditor sends it as an <code>Authorization: Bearer …</code> header. Leave this empty if your trigger has no token. It's stored only on this device and never synced.</p>
+      </div>
       <div class="row">
         <button class="btn btn--primary" id="save">Save</button>
         <button class="btn" id="test"><svg><use href="#i-send"/></svg>Send test payload</button>

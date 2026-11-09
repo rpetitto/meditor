@@ -61,7 +61,7 @@ code { font-size: .92em; padding: 1px 5px; border-radius: 5px; background: var(-
 .field { display: grid; gap: 6px; }
 .field__label { font-size: 11px; font-weight: 650; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
 
-input[type="url"] {
+input[type="url"], input#token {
   width: 100%;
   font: 12.5px/1.4 var(--mono);
   color: var(--ink);
@@ -71,7 +71,12 @@ input[type="url"] {
   padding: 10px 12px;
   transition: border-color .15s, box-shadow .15s;
 }
-input[type="url"]:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent); }
+input[type="url"]:focus, input#token:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent); }
+
+.secret { position: relative; display: flex; align-items: center; }
+.secret input { padding-right: 72px; }
+.secret .btn { position: absolute; right: 4px; }
+.field .hint b { color: var(--ink-2); }
 
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 

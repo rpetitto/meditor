@@ -429,6 +429,14 @@ async function send() {
     note.classList.add('bad');
     note.textContent = res?.error || 'Unknown error';
     note.title = res?.response || '';
+    if (res?.authError || res?.needsSetup) {
+      const fix = document.createElement('button');
+      fix.type = 'button';
+      fix.className = 'footer__fix';
+      fix.textContent = 'Open Settings';
+      fix.addEventListener('click', () => chrome.runtime.openOptionsPage());
+      note.append(fix);
+    }
   }
 }
 
