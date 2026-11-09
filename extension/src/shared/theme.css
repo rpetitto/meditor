@@ -1,0 +1,69 @@
+/* Design tokens shared by the popup and the settings page. Penn State navy + sky. */
+:root {
+  --navy: #1e407c;
+  --navy-deep: #13294f;
+  --sky: #96bee6;
+
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --surface-2: #f6f8fb;
+  --ink: #0e1a2e;
+  --ink-2: #3c4a63;
+  --muted: #6c7891;
+  --line: #e1e6ef;
+  --line-strong: #cfd7e4;
+  --brand: var(--navy);
+  --brand-soft: #e9f0fa;
+  --focus: #5b8fd6;
+
+  --ok: #157f3c;
+  --ok-soft: #e6f5eb;
+  --warn: #b45309;
+  --warn-soft: #fdf3e1;
+  --bad: #b42318;
+  --bad-soft: #fdecea;
+
+  --btn-bg: var(--navy);
+  --btn-bg-hover: #183668;
+  --btn-ink: #ffffff;
+
+  --shadow-sm: 0 1px 2px rgba(14, 26, 46, .06), 0 1px 1px rgba(14, 26, 46, .04);
+  --shadow-md: 0 6px 20px -8px rgba(14, 26, 46, .25), 0 2px 6px -2px rgba(14, 26, 46, .08);
+  --radius: 14px;
+  --serif: "Iowan Old Style", "Charter", "Source Serif Pro", "Georgia", "Cambria", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a1120;
+    --surface: #111b2e;
+    --surface-2: #0d1627;
+    --ink: #e9eff9;
+    --ink-2: #c0cbdd;
+    --muted: #8a97b0;
+    --line: #1f2c45;
+    --line-strong: #2b3b5a;
+    --brand: var(--sky);
+    --brand-soft: #16243d;
+    --focus: #96bee6;
+
+    --ok: #4ade80;
+    --ok-soft: #10291c;
+    --warn: #fbbf24;
+    --warn-soft: #2a2010;
+    --bad: #f87171;
+    --bad-soft: #2c1414;
+
+    --btn-bg: var(--sky);
+    --btn-bg-hover: #aacbec;
+    --btn-ink: #0b1a33;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-md: 0 8px 24px -10px rgba(0, 0, 0, .7);
+    color-scheme: dark;
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Meditor — News Clipper",
+  "short_name": "Meditor",
+  "version": "1.0.0",
+  "description": "Detects news articles and clips their URL, title, image, publish date and authors to your Glide webhook.",
+  "minimum_chrome_version": "110",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Meditor — News Clipper",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "options_page": "src/options/options.html",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["https://go.glideapps.com/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content/extract.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+N",
+        "mac": "Alt+Shift+N"
+      },
+      "description": "Open Meditor on the current page"
+    }
+  }
+}

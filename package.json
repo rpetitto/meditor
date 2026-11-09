@@ -1,0 +1,16 @@
+{
+  "name": "meditor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome extension that detects news articles and clips them to a Glide webhook.",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "screenshots": "node tests/run.mjs --shots",
+    "icons": "python3 scripts/build_icons.py",
+    "package": "bash scripts/package.sh"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

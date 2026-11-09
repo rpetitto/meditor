@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Secret webhook URL baked into packaged builds (see scripts/package.sh)
+.webhook-url
