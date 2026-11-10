@@ -89,7 +89,7 @@
 
       <div class="tabs" role="tablist">
         <button role="tab" class="tab" id="tab-fields" aria-selected="true" aria-controls="panel-fields">Fields</button>
-        <button role="tab" class="tab" id="tab-json" aria-selected="false" aria-controls="panel-json">JSON payload</button>
+        <button role="tab" class="tab" id="tab-json" aria-selected="false" aria-controls="panel-json">Data</button>
         <span class="tabs__pill" aria-hidden="true"></span>
       </div>
 
@@ -124,7 +124,7 @@
       <div class="panel" id="panel-json" role="tabpanel" hidden>
         <div class="code">
           <div class="code__bar">
-            <span><span class="code__dot"></span>POST body · application/json</span>
+            <span><span class="code__dot"></span>What mEditor saves</span>
             <button class="code__copy" id="copy-json"><svg><use href="#i-copy"/></svg><span>Copy</span></button>
           </div>
           <pre id="json-view"></pre>
@@ -136,7 +136,7 @@
   <footer class="footer" id="footer" hidden>
     <button class="send" id="send" data-state="idle">
       <span class="send__icon"><svg><use href="#i-send"/></svg></span>
-      <span class="send__label" id="send-label">Send to Glide</span>
+      <span class="send__label" id="send-label">Send to mEditor</span>
     </button>
     <div class="footer__note" id="footer-note"></div>
   </footer>

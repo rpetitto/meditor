@@ -2,7 +2,7 @@
 
 Copy each value into the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole). The fields below follow the dashboard's tabs.
 
-**Upload:** `dist/meditor-extension-v1.3.1.zip` (built with `npm run package`, with the relay URL in `.webhook-url`).
+**Upload:** `dist/meditor-extension-v1.3.2.zip` (built with `npm run package`, with the relay URL in `.webhook-url`).
 
 ---
 
@@ -12,32 +12,31 @@ Copy each value into the [Chrome Web Store Developer Dashboard](https://chrome.g
 
 **Summary** (from the manifest, 132 characters max):
 ```
-Spots news articles and clips their link, headline, lead image, publish date and authors to your Glide app.
+Spots news articles and clips their link, headline, lead image, publish date and authors to mEditor.
 ```
 
 **Description:**
 ```
-mEditor turns any news article into a clean, structured clip for your Glide app in one click.
+mEditor turns any news article into a clean clip in one click.
 
-Open an article, click the mEditor icon, and mEditor shows:
+Open an article, click the mEditor icon, and you'll see:
 • Whether the page is a news article, with a confidence score you can expand to see why
 • A preview of the headline, lead image, publication and byline
-• Editable fields, so you can fix anything before it's sent
-• The exact JSON that will be sent
+• Editable fields, so you can fix anything before it's saved
 
-Press "Send to Glide" and the clip arrives in your Glide app with five fields: url, title, image, published_date and authors. Links are cleaned of tracking parameters, dates are ISO 8601, and authors are split into a proper list.
+Press "Send to mEditor" and the article is saved with its link, headline, lead image, publish date and authors. Links are cleaned of tracking codes, every author is listed separately, and articles you've already saved are marked so you don't clip them twice.
 
-Built to read real newsrooms: mEditor understands schema.org NewsArticle markup (including complex JSON-LD graphs), Open Graph and article meta tags, Parse.ly and Dublin Core metadata, and plain bylines and timestamps on pages that have no metadata at all.
+Built for real newsrooms: mEditor reads the details publishers build into their pages, and falls back to the visible byline and date when a page has none.
 
 PRIVATE BY DEFAULT
 • mEditor reads a page only when you click its icon.
-• Want the ✓ badge on articles as you browse? Switch on Automatic detection in Settings. Chrome asks your permission first, and detection runs inside your browser.
+• Want the ✓ badge on articles as you browse? Switch on Automatic detection in Settings. Chrome asks your permission first, and detection happens on your computer.
 • Nothing is sent until you press Send (or turn on Auto-send).
-• No analytics, no tracking, no ads.
+• No ads, no tracking, no analytics.
 
 ALSO INCLUDES
-• Auto-send: send articles automatically above a confidence threshold you choose, once per article
-• Recent clips history, kept only on your computer
+• Auto-send: save articles automatically above a confidence level you choose, once per article
+• Recent clips, kept only on your computer
 • Keyboard shortcuts: Alt+Shift+N opens mEditor; Ctrl/⌘+Enter sends
 • Light and dark themes
 ```
@@ -65,7 +64,7 @@ ALSO INCLUDES
 
 **Single purpose:**
 ```
-Clip news articles: detect when the current page is a news article, show its link, headline, lead image, publish date and authors, and send them to the publisher's Glide app when the user chooses.
+Clip news articles to mEditor: detect when the current page is a news article, show its link, headline, lead image, publish date and authors, and save them to mEditor when the user chooses.
 ```
 
 **Permission justifications:**
@@ -79,7 +78,7 @@ Clip news articles: detect when the current page is a news article, show its lin
 
 **Are you using remote code?** No, I am not using remote code.
 ```
-All JavaScript is included in the package. The only network request is a JSON POST of the clip to the configured destination.
+All JavaScript is included in the package. The only network request sends the clip to the mEditor service.
 ```
 
 **Data usage.** Check these two:
@@ -113,9 +112,9 @@ https://github.com/rpetitto/meditor/blob/claude/blissful-bell-4u0z34/PRIVACY.md
 ```
 1. Open a news article, e.g. https://www.bbc.com/news (pick any story) or https://apnews.com.
 2. Click the mEditor icon. The popup shows "News article detected" with the extracted fields.
-3. Press "Send to Glide". The clip is delivered to the developer's Glide app through the developer's relay; the button turns green.
+3. Press "Send to mEditor". The clip is saved to the developer's mEditor service and the button turns green ("Saved to mEditor").
 4. Optional: Settings → Automatic detection asks for all-sites access and then shows a ✓ badge on articles while browsing.
 No account or login is needed.
 ```
 
-> Reviewers' test clips will appear as rows in your Glide app. Delete them after approval.
+> Reviewers' test clips will appear in your mEditor app. Delete them after approval.

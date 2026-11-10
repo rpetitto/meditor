@@ -104,6 +104,23 @@ input[type="url"]:focus { outline: none; border-color: var(--focus); box-shadow:
 .status.ok { color: var(--ok); }
 .status.bad { color: var(--bad); }
 
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font: 650 12px var(--sans);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.pill__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent); }
+.pill[data-state="off"] { background: var(--warn-soft); color: var(--warn); }
+
+.advanced { border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.advanced summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 13px; color: var(--ink-2); }
+.advanced__body { display: grid; gap: 12px; padding: 4px 14px 14px; }
 .schema { border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
 .schema summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 13px; color: var(--ink-2); }
 .schema pre {

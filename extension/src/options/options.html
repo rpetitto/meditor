@@ -25,7 +25,7 @@
       <img src="../../icons/logo.png" alt="" width="56" height="56" />
       <div>
         <h1>mEditor</h1>
-        <p>Detects news articles and clips them to your Glide webhook.</p>
+        <p>Spot news articles and clip them to mEditor.</p>
       </div>
     </div>
   </header>
@@ -35,32 +35,29 @@
       <div class="panel__head">
         <span class="panel__icon"><svg><use href="#i-link"/></svg></span>
         <div>
-          <h2>Webhook</h2>
-          <p>Each clip is sent as a JSON <code>POST</code> to this URL, normally your mEditor relay.</p>
+          <h2>Connection</h2>
+          <p id="conn-text">Clips are saved to mEditor.</p>
         </div>
+        <span class="pill" id="conn-pill" data-state="on"><span class="pill__dot"></span><span id="conn-label">Connected</span></span>
       </div>
 
-      <label class="field">
-        <span class="field__label">Webhook URL</span>
-        <input id="webhook" type="url" spellcheck="false" autocomplete="off" />
-      </label>
       <div class="row">
-        <button class="btn btn--primary" id="save">Save</button>
-        <button class="btn" id="test"><svg><use href="#i-send"/></svg>Send test payload</button>
-        <button class="btn btn--ghost" id="reset">Reset to default</button>
+        <button class="btn" id="test"><svg><use href="#i-send"/></svg>Send a test clip</button>
         <span class="status" id="webhook-status" role="status"></span>
       </div>
 
-      <details class="schema">
-        <summary>Payload format</summary>
-<pre>{
-  "url": "https://example.com/2026/11/09/story",
-  "title": "Headline of the article",
-  "image": "https://example.com/lead-image.jpg",
-  "published_date": "2026-11-09T14:30:00.000Z",
-  "authors": ["Jane Doe", "John Roe"]
-}</pre>
-        <p><code>image</code> is the lead image's absolute URL. <code>published_date</code> is ISO 8601 in UTC, or an empty string when the page has no date.</p>
+      <details class="advanced" id="advanced">
+        <summary>Advanced: change where clips go</summary>
+        <div class="advanced__body">
+          <label class="field">
+            <span class="field__label">mEditor address</span>
+            <input id="webhook" type="url" spellcheck="false" autocomplete="off" />
+          </label>
+          <div class="row">
+            <button class="btn btn--primary" id="save">Save</button>
+            <button class="btn btn--ghost" id="reset">Use the default</button>
+          </div>
+        </div>
       </details>
     </section>
 

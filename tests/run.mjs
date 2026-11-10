@@ -306,7 +306,7 @@ await test('first install without a webhook opens Settings', async () => {
   const isOptions = (p) => p.url().includes('/src/options/options.html');
   const opts = ctx.pages().find(isOptions) || await ctx.waitForEvent('page', { predicate: isOptions, timeout: 5000 });
   await opts.waitForSelector('#webhook-status.bad');
-  assert.match(await opts.textContent('#webhook-status'), /Paste your mEditor relay URL/);
+  assert.match(await opts.textContent('#webhook-status'), /Add your mEditor address/);
   assert.equal(await opts.isHidden('#reset'), true);
   await opts.close();
 });
@@ -350,8 +350,8 @@ await test('opening mEditor reads the page on demand and badges it', async () =>
 
 await test('without a webhook, the send button asks for one instead', async () => {
   await popup.waitForSelector('#view-result:not([hidden])');
-  assert.equal(await popup.textContent('#send-label'), 'Add your webhook URL');
-  assert.match(await popup.textContent('#footer-note'), /needs a webhook/);
+  assert.equal(await popup.textContent('#send-label'), 'Connect mEditor');
+  assert.match(await popup.textContent('#footer-note'), /isn’t connected/);
 });
 
 // Point the extension at the local stand-in webhook. For screenshots, show a placeholder
@@ -365,7 +365,8 @@ await test('popup shows verdict, preview and editable fields', async () => {
   assert.equal(await popup.textContent('#verdict-title'), 'News article detected');
   assert.equal(await popup.inputValue('#f-title'), 'City council approves riverfront park plan after “marathon” session');
   assert.equal(await popup.locator('#f-authors .chip').count(), 2);
-  assert.equal(await popup.textContent('#send-label'), 'Send to Glide');
+  assert.equal(await popup.textContent('#send-label'), 'Send to mEditor');
+  assert.equal(await popup.textContent('#footer-note'), 'Saves the article to mEditor');
 });
 
 if (SHOTS) {
@@ -404,6 +405,12 @@ await test('editing a field and pressing Send POSTs the edited JSON', async () =
   assert.equal(await storedWebhook(), LOCAL_HOOK);
   await popup.click('#send');
   await popup.waitForSelector('#send[data-state="sent"]', { timeout: 8000 });
+  assert.equal(await popup.textContent('#send-label'), 'Saved to mEditor');
+  if (SHOTS) {
+    await popup.evaluate(() => { document.getElementById('main').scrollTop = 0; });
+    await popup.waitForTimeout(500);
+    await popup.screenshot({ path: path.join(RAW, 'popup-sent.png') });
+  }
   assert.equal(received.length, 1);
   assert.match(received[0].headers['content-type'], /application\/json/);
   assert.deepEqual(JSON.parse(received[0].body), {
@@ -429,7 +436,8 @@ await test('a failing webhook shows an error instead of "sent"', async () => {
   await popup.waitForSelector('#view-result:not([hidden])');
   await popup.click('#send');
   await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
-  assert.match(await popup.textContent('#footer-note'), /Network error|responded 404/);
+  assert.equal(await popup.textContent('#footer-note'), 'mEditor couldn’t save this clip right now. Try again in a moment.');
+  assert.equal(await popup.getAttribute('#footer-note', 'title'), 'HTTP 404: not found');
   await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/hook`);
 });
 
@@ -439,7 +447,9 @@ await test('posting straight to a token-protected Glide trigger shows Glide\'s 4
   await popup.waitForSelector('#view-result:not([hidden])');
   await popup.click('#send');
   await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
-  assert.equal(await popup.textContent('#footer-note'), 'Webhook responded 401 — Invalid bearer token');
+  assert.equal(await popup.textContent('#footer-note'), 'mEditor couldn’t save this clip right now. Try again in a moment.');
+  // The technical cause stays available on hover for whoever runs the service.
+  assert.equal(await popup.getAttribute('#footer-note', 'title'), 'HTTP 401: Invalid bearer token');
 });
 
 const relay = await startRelay({ env: { GLIDE_WEBHOOK_URL: `${ORIGIN}/secure-hook`, GLIDE_TOKEN: SECURE_TOKEN } });
@@ -479,7 +489,8 @@ await test('a relay with a stale token explains how to fix it', async () => {
   await popup.waitForSelector('#view-result:not([hidden])');
   await popup.click('#send');
   await popup.waitForSelector('#send[data-state="error"]', { timeout: 8000 });
-  assert.match(await popup.textContent('#footer-note'), /Glide rejected the relay’s bearer token\. Update GLIDE_TOKEN/);
+  assert.match(await popup.textContent('#footer-note'), /^mEditor couldn’t save this clip right now/);
+  assert.match(await popup.getAttribute('#footer-note', 'title'), /HTTP 502: Glide rejected the relay’s bearer token\. Update GLIDE_TOKEN/);
   stale.close();
   await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url }), `${ORIGIN}/hook`);
 });
@@ -544,12 +555,32 @@ await test('auto-send posts once per article when enabled', async () => {
   await p.close();
 });
 
+const TECH_WORDS = /glide|json|webhook|relay|workers\.dev|\bhttp\b|\bpost\b|payload|api\b/i;
+
+await test('nothing users see mentions the tech stack', async () => {
+  // Visible text only (innerText skips hidden panels such as the raw data view).
+  await popup.reload();
+  await popup.waitForSelector('#view-result:not([hidden])');
+  const popupText = await popup.evaluate(() => document.body.innerText);
+  assert.doesNotMatch(popupText, TECH_WORDS, popupText.match(TECH_WORDS)?.[0]);
+  const opts = await ctx.newPage();
+  await opts.goto(`chrome-extension://${extId}/src/options/options.html`);
+  await opts.waitForSelector('.history li');
+  const optsText = await opts.evaluate(() => document.body.innerText);
+  assert.doesNotMatch(optsText, TECH_WORDS, optsText.match(TECH_WORDS)?.[0]);
+  const mf = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
+  assert.doesNotMatch(`${mf.name} ${mf.description} ${mf.action.default_title}`, TECH_WORDS);
+  await opts.close();
+});
+
 await test('options page lists the history', async () => {
   const opts = await ctx.newPage();
   await opts.setViewportSize({ width: 900, height: 1100 });
   await opts.goto(`chrome-extension://${extId}/src/options/options.html`);
   await opts.waitForSelector('.history li');
   assert.ok(await opts.locator('.history li').count() >= 3);
+  assert.equal(await opts.textContent('#conn-label'), 'Connected');
+  assert.equal(await opts.evaluate(() => document.getElementById('advanced').open), false);
   if (SHOTS) {
     await worker.evaluate((url) => chrome.storage.sync.set({ webhookUrl: url, autoSend: false, autoSendThreshold: 70 }), GLIDE);
     await opts.reload();

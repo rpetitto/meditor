@@ -42,7 +42,7 @@ The extension only knows the relay's address. The relay checks each clip and add
 2. **Build the extension with that URL as its default:**
    ```bash
    echo 'https://meditor-relay.<you>.workers.dev/' > .webhook-url   # gitignored
-   npm run package      # → dist/meditor-extension-v1.3.1.zip
+   npm run package      # → dist/meditor-extension-v1.3.2.zip
    ```
    The packager refuses to bake in a raw `glideapps.com` URL, because users would then need the token.
 3. **Publish it** to the Chrome Web Store as an unlisted item (see [Publishing](#publishing-to-the-chrome-web-store)), and share the store link. Or **install the zip directly** on each computer:
@@ -62,14 +62,14 @@ Works in Chrome 110+ and other Chromium browsers (Edge, Brave, Arc).
 - **Click the icon** (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd>) on any article to see the detection score, a preview card and every field. mEditor reads a page only when you do this, unless you turn on automatic detection.
 - **The toolbar badge** shows the result. <kbd>✓</kbd> green means a news article, <kbd>?</kbd> amber means it might be one, and <kbd>↑</kbd> navy means you already sent this page. With **Automatic detection** on, the badge appears as you browse, without clicking.
 - **Fix anything before sending.** Title, URL, image, date and author chips are all editable, and the *JSON payload* tab shows exactly what will be posted.
-- **Click Send to Glide** (or press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd>). The button turns green when the webhook accepts the clip. If it fails, it turns red and shows the reason.
+- **Click Send to mEditor** (or press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd>). The button turns green ("Saved to mEditor") when the clip is saved. If it fails, it turns red with a plain explanation; hover the message for the technical detail.
 - On pages that don't look like articles, the button becomes **Send anyway**. Detection guides you but never blocks you.
 
 ### Settings
 
 Right-click the icon and choose **Options**, or click the gear in the popup.
 
-- **Webhook URL**: where clips go (normally the relay). You can send a test payload, or reset to the build's default. Saving a URL on another host asks Chrome for permission to contact that host only.
+- **Connection**: shows whether mEditor is connected, with a **Send a test clip** button. **Advanced** holds the destination address (normally the relay); saving one on another host asks Chrome for permission to contact that host only.
 - **Automatic detection** (off by default): shows the badge on articles as you browse. Turning it on asks Chrome for access to all sites; turning it off gives that access back. Detection runs locally and sends nothing.
 - **Auto-send** (off by default; needs automatic detection): sends articles as soon as you open them if their score meets your minimum confidence (default 70%). Each URL is sent only once.
 - **Recent clips**: the last 100 sends with status, kept only in this browser.

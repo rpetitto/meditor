@@ -296,7 +296,6 @@ function renderFooter() {
   if (btn.dataset.state === 'sending') return;
   const note = $('footer-note');
   const verdict = state.result?.detection.verdict;
-  const host = shortHost(state.settings.webhookUrl);
 
   btn.dataset.state = 'idle';
   btn.dataset.tone = verdict === 'article' || state.sentEntry ? '' : 'quiet';
@@ -307,18 +306,16 @@ function renderFooter() {
   if (!state.settings.webhookUrl) {
     btn.dataset.tone = 'quiet';
     btn.querySelector('use').setAttribute('href', '#i-gear');
-    $('send-label').textContent = 'Add your webhook URL';
-    note.textContent = 'mEditor needs a webhook before it can send.';
+    $('send-label').textContent = 'Connect mEditor';
+    note.textContent = 'mEditor isn’t connected yet.';
   } else if (state.sentEntry) {
     $('send-label').textContent = 'Send again';
     note.classList.add('ok');
     note.innerHTML = '<svg><use href="#i-check"/></svg>';
     note.append(`Already sent ${timeAgo(state.sentEntry.sentAt)}`);
   } else {
-    $('send-label').textContent = verdict === 'article' ? 'Send to Glide' : 'Send anyway';
-    const code = document.createElement('code');
-    code.textContent = host;
-    note.append('POSTs JSON to ', code);
+    $('send-label').textContent = verdict === 'article' ? 'Send to mEditor' : 'Send anyway';
+    note.textContent = 'Saves the article to mEditor';
   }
 }
 
@@ -418,17 +415,18 @@ async function send() {
   if (res?.ok) {
     btn.dataset.state = 'sent';
     btn.querySelector('use').setAttribute('href', '#i-check');
-    $('send-label').textContent = 'Sent to Glide';
+    $('send-label').textContent = 'Saved to mEditor';
     note.classList.add('ok');
-    note.textContent = `Delivered · HTTP ${res.status}`;
+    note.textContent = 'Saved just now';
     state.sentEntry = { sentAt: res.sentAt || Date.now() };
   } else {
     btn.dataset.state = 'error';
     btn.querySelector('use').setAttribute('href', '#i-alert');
     $('send-label').textContent = 'Failed — try again';
     note.classList.add('bad');
-    note.textContent = res?.error || 'Unknown error';
-    note.title = res?.response || '';
+    note.textContent = res?.error || 'mEditor couldn’t save this clip.';
+    // Technical detail for whoever runs the mEditor service; the visible text stays plain.
+    note.title = res?.detail || '';
     if (res?.needsSetup) {
       const fix = document.createElement('button');
       fix.type = 'button';

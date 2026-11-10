@@ -1,8 +1,8 @@
 # mEditor privacy policy
 
-_Last updated: November 9, 2026_
+_Last updated: November 10, 2026_
 
-mEditor is a Chrome extension that detects news articles and, when asked, sends a short summary of an article to the publisher's Glide app. This policy explains what mEditor reads, what it sends, and where that data goes.
+mEditor is a Chrome extension that detects news articles and, when asked, saves a short summary of an article to the mEditor service. This policy explains what mEditor reads, what it sends, and where that data goes.
 
 ## What mEditor reads
 
@@ -29,10 +29,12 @@ Nothing else is sent: no browsing history, no information about you, your device
 
 ## Where it goes
 
-1. **mEditor relay**: a small service on [Cloudflare Workers](https://www.cloudflare.com/privacypolicy/) operated by the publisher. It checks that the record has the expected shape and forwards it. The relay does not store records.
-2. **The publisher's Glide app**: the record is stored as a row in the publisher's [Glide](https://www.glideapps.com/legal/privacy) app, which is where the clips are meant to be collected.
+Records are saved to the **mEditor service**, operated by mEditor's publisher. The service runs on two infrastructure providers, which process records only to deliver this service:
 
-The data is used only to collect the articles you clip in that app. It is **not sold**, not used for advertising, not used to build profiles, not used to determine creditworthiness or for lending, and not shared with anyone else except as required by law.
+1. A small receiving service hosted on [Cloudflare](https://www.cloudflare.com/privacypolicy/) checks that each record has the expected shape and passes it on. It does not store records.
+2. Records are stored in the mEditor app, which is built on [Glide](https://www.glideapps.com/legal/privacy).
+
+The data is used only to collect the articles you clip in mEditor. It is **not sold**, not used for advertising, not used to build profiles, not used to determine creditworthiness or for lending, and not shared with anyone else except as required by law.
 
 ## What stays on your device
 
@@ -47,7 +49,7 @@ mEditor has no analytics, no tracking, no ads and no remote code.
 - Turn off **Automatic detection** and **Auto-send** in mEditor's settings at any time.
 - Clear **Recent clips** in mEditor's settings.
 - Uninstalling mEditor removes its settings and history from Chrome.
-- To have clips you've sent removed from the publisher's Glide app, contact the publisher (below).
+- To have clips you've sent removed from mEditor, contact the publisher (below).
 
 ## Changes and contact
 

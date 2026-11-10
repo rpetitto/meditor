@@ -14,7 +14,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RAW = path.join(ROOT, 'store', 'raw');
 const OUT = path.join(ROOT, 'store');
 
-const need = ['popup-main.png', 'popup-fields.png', 'popup-json.png', 'popup-dark.png', 'options-1280.png'];
+const need = ['popup-main.png', 'popup-fields.png', 'popup-sent.png', 'popup-dark.png', 'options-1280.png'];
 for (const f of need) {
   if (!fs.existsSync(path.join(RAW, f))) {
     console.error(`Missing store/raw/${f}. Run "npm run screenshots" first.`);
@@ -62,20 +62,20 @@ const pages = [
   {
     out: 'screenshot-1.png', w: 1280, h: 800,
     html: screenshot('Spot a news article.<br>Clip it in one click.',
-      'mEditor reads the article you’re on and pulls out exactly what your Glide app needs.',
+      'mEditor reads the article you’re on and captures the details that matter.',
       'popup-main.png', ['Headline, link and lead image', 'Publish date and every author', 'Confidence score you can inspect']),
   },
   {
     out: 'screenshot-2.png', w: 1280, h: 800,
     html: screenshot('Check every field<br>before it’s sent.',
-      'Fix a headline, swap the image, add or remove an author. The preview and payload update as you type.',
+      'Fix a headline, swap the image, add or remove an author. The preview updates as you type.',
       'popup-fields.png'),
   },
   {
     out: 'screenshot-3.png', w: 1280, h: 800,
-    html: screenshot('Exactly the JSON<br>your app expects.',
-      'Every clip is the same five fields: url, title, image, published_date and authors. Clean URLs and ISO dates, ready for your Glide workflow.',
-      'popup-json.png'),
+    html: screenshot('One click,<br>and it’s in mEditor.',
+      'Every clip arrives the same way: link, headline, lead image, publish date and authors, tidy and ready to use.',
+      'popup-sent.png', ['Tracking codes stripped from links', 'Every author listed separately', 'Already-saved articles are marked']),
   },
   {
     out: 'screenshot-4.png', w: 1280, h: 800,
@@ -94,7 +94,7 @@ const pages = [
       .t img { width: 104px; height: 104px; filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); }
       h1 { font-size: 40px; letter-spacing: -.3px; }
       p { margin-top: 6px; font-size: 16.5px; line-height: 1.35; color: #c9dcf2; }
-    </style></head><body><div class="t"><img src="${icon}"><div><h1 class="serif">mEditor</h1><p>Clip news articles to your Glide app in one click.</p></div></div></body></html>`,
+    </style></head><body><div class="t"><img src="${icon}"><div><h1 class="serif">mEditor</h1><p>Clip news articles to mEditor in one click.</p></div></div></body></html>`,
   },
   {
     out: 'promo-marquee.png', w: 1400, h: 560,
@@ -106,7 +106,7 @@ const pages = [
       .crop { height: 560px; overflow: hidden; padding-top: 70px; }
       .crop img { width: 440px; display: block; }
     </style></head><body><div class="m">
-      <div><img class="i" src="${icon}"><h1 class="serif">mEditor</h1><p>Spot news articles and clip them to your Glide app in one click.</p></div>
+      <div><img class="i" src="${icon}"><h1 class="serif">mEditor</h1><p>Spot news articles and clip them to mEditor in one click.</p></div>
       <div class="crop"><img class="shot" src="${img('popup-main.png')}"></div>
     </div></body></html>`,
   },
@@ -117,7 +117,7 @@ const pages = [
       .row { display: flex; gap: 16px; padding: 16px; }
       .row img { width: 400px; height: 625px; border-radius: 14px; box-shadow: 0 10px 30px -12px rgba(14,26,46,.35); }
     </style></head><body><div class="row">
-      ${['popup-main.png', 'popup-fields.png', 'popup-json.png', 'popup-dark.png'].map((f) => `<img src="${img(f)}">`).join('')}
+      ${['popup-main.png', 'popup-fields.png', 'popup-sent.png', 'popup-dark.png'].map((f) => `<img src="${img(f)}">`).join('')}
     </div></body></html>`,
   },
 ];

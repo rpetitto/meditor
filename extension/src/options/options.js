@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 
 const SAMPLE = {
   url: 'https://example.com/2026/11/09/meditor-test',
-  title: 'mEditor test payload — you can delete this row',
+  title: 'mEditor test clip — safe to delete',
   image: 'https://example.com/lead-image.jpg',
   published_date: new Date().toISOString(),
   authors: ['mEditor Test'],
@@ -34,7 +34,7 @@ function parseWebhook(value) {
 async function saveWebhook() {
   const url = parseWebhook($('webhook').value);
   if (!url) {
-    setStatus('bad', 'Enter a valid http(s) URL.');
+    setStatus('bad', 'Enter a valid web address (https://…).');
     return false;
   }
   let granted = true;
@@ -54,17 +54,20 @@ async function saveWebhook() {
 }
 
 async function onSave() {
-  if (await saveWebhook()) setStatus('ok', 'Saved');
+  if (await saveWebhook()) {
+    setStatus('ok', 'Saved');
+    renderConnection();
+  }
 }
 
 async function onTest() {
   const btn = $('test');
   if (!(await saveWebhook())) return;
   btn.disabled = true;
-  setStatus('', 'Sending test…');
+  setStatus('', 'Sending a test clip…');
   const res = await chrome.runtime.sendMessage({ type: 'meditor:send', payload: SAMPLE, source: 'test' }).catch((e) => ({ ok: false, error: String(e) }));
   btn.disabled = false;
-  if (res?.ok) setStatus('ok', `Webhook accepted the test (HTTP ${res.status})`);
+  if (res?.ok) setStatus('ok', 'mEditor received the test clip');
   else setStatus('bad', res?.error || 'Test failed');
 }
 
@@ -74,7 +77,8 @@ async function onReset() {
   $('webhook').value = fallback;
   // Clearing the stored URL makes mEditor follow the built-in default, including future builds.
   await saveSettings({ webhookUrl: '' });
-  setStatus('ok', 'Restored the default webhook');
+  setStatus('ok', 'Back to the default mEditor address');
+  renderConnection();
 }
 
 const ALL_SITES = ['http://*/*', 'https://*/*'];
@@ -129,29 +133,42 @@ async function renderHistory() {
     meta.textContent = [
       shortHost(p.url || ''),
       p.authors?.length ? p.authors.join(', ') : null,
-      `${!h.ok ? 'failed' : h.source === 'auto' ? 'auto-sent' : 'sent'} ${timeAgo(h.sentAt)}`,
+      `${!h.ok ? 'failed' : h.source === 'auto' ? 'auto-saved' : 'saved'} ${timeAgo(h.sentAt)}`,
     ].filter(Boolean).join(' · ');
     main.append(a, meta);
 
     const tag = document.createElement('span');
     tag.className = `tag${h.ok ? '' : ' bad'}`;
     tag.innerHTML = `<svg><use href="#i-${h.ok ? 'check' : 'alert'}"/></svg>`;
-    tag.append(h.ok ? String(h.status || 'OK') : h.status ? `HTTP ${h.status}` : 'Failed');
-    if (!h.ok) tag.title = h.error || '';
+    tag.append(h.ok ? 'Saved' : 'Failed');
+    if (!h.ok) tag.title = [h.error, h.detail].filter(Boolean).join(' · ');
 
     li.append(thumb, main, tag);
     return li;
   }));
 }
 
+async function renderConnection(settings) {
+  settings ||= await getSettings();
+  const connected = Boolean(settings.webhookUrl);
+  $('conn-pill').dataset.state = connected ? 'on' : 'off';
+  $('conn-label').textContent = connected ? 'Connected' : 'Not connected';
+  $('conn-text').textContent = connected
+    ? 'Clips are saved to mEditor.'
+    : 'Add your mEditor address under Advanced to start clipping.';
+  $('test').disabled = !connected;
+  if (!connected) $('advanced').open = true;
+}
+
 async function init() {
   const settings = await getSettings();
   $('webhook').value = settings.webhookUrl;
-  $('webhook').placeholder = 'https://meditor-relay.<your-subdomain>.workers.dev';
+  $('webhook').placeholder = 'https://…';
   // Builds packaged without a default webhook have nothing to reset to.
   $('reset').hidden = !(await getDefaultWebhookUrl());
+  await renderConnection(settings);
   if (!settings.webhookUrl) {
-    setStatus('bad', 'Paste your mEditor relay URL and press Save to start clipping.');
+    setStatus('bad', 'Add your mEditor address under Advanced to start clipping.');
     $('webhook').focus();
   }
   renderAuto(settings);
@@ -202,7 +219,10 @@ async function init() {
   chrome.permissions.onRemoved.addListener(() => renderAuto());
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.history) renderHistory();
-    if (area === 'sync') renderAuto();
+    if (area === 'sync') {
+      renderAuto();
+      renderConnection();
+    }
   });
 }
 

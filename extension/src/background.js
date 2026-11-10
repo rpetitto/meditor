@@ -7,7 +7,7 @@ import { DEFAULTS, HISTORY_LIMIT, getSettings, getDefaultWebhookUrl, toPayload }
 const BADGES = {
   article: { text: '✓', color: '#15803d', title: (r) => `News article detected (${r.detection.confidence}% confidence) — click to clip` },
   maybe: { text: '?', color: '#b45309', title: (r) => `Might be an article (${r.detection.confidence}% confidence)` },
-  sent: { text: '↑', color: '#1e407c', title: () => 'Already sent to your webhook' },
+  sent: { text: '↑', color: '#1e407c', title: () => 'Already saved to mEditor' },
 };
 
 async function setBadge(tabId, state, result) {
@@ -57,10 +57,10 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
   const entry = { id: crypto.randomUUID(), sentAt: Date.now(), source, payload, webhookUrl, ok: false };
 
   if (!payload.url) {
-    return { ok: false, error: 'Nothing to send: the URL is empty.' };
+    return { ok: false, error: 'Nothing to send: the article link is empty.' };
   }
   if (!webhookUrl) {
-    return { ok: false, needsSetup: true, error: 'No webhook URL yet. Add it in Settings.' };
+    return { ok: false, needsSetup: true, error: 'mEditor isn’t connected yet. Open Settings to connect it.' };
   }
 
   let target;
@@ -68,7 +68,7 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
     target = new URL(webhookUrl);
     if (!/^https?:$/.test(target.protocol)) throw new Error('bad protocol');
   } catch {
-    return { ok: false, error: 'The webhook URL in Settings is not a valid http(s) URL.' };
+    return { ok: false, needsSetup: true, error: 'The mEditor address in Settings isn’t valid.' };
   }
 
   const controller = new AbortController();
@@ -85,17 +85,24 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
     const body = (await res.text().catch(() => '')).slice(0, 500);
     Object.assign(entry, { ok: res.ok, status: res.status, response: body });
     if (!res.ok) {
-      // The relay explains failures as {"error": "..."}; fall back to the status line.
-      let detail = '';
-      try { detail = JSON.parse(body)?.error || ''; } catch { /* not JSON */ }
+      // Users see a plain, branded message. The technical cause (the relay's {"error"}
+      // or a short plain-text body) is kept as `detail` for the tooltip and history.
+      let reason = '';
+      try { reason = JSON.parse(body)?.error || ''; } catch { /* not JSON */ }
       const text = body.trim();
-      const plain = !detail && text && text.length <= 140 && !text.includes('<') ? ` — ${text}` : '';
-      entry.error = detail || `Webhook responded ${res.status}${plain}`;
+      if (!reason && text && text.length <= 140 && !text.includes('<')) reason = text;
+      entry.detail = `HTTP ${res.status}${reason ? `: ${reason}` : ''}`;
+      // A 400 from the relay is about the clip itself (e.g. a title that's too long), which
+      // the user can fix, so show its reason. Everything else is a service-side problem.
+      entry.error = res.status === 400 && reason
+        ? `mEditor couldn’t save this clip: ${reason}`
+        : 'mEditor couldn’t save this clip right now. Try again in a moment.';
     }
   } catch (err) {
+    entry.detail = String(err?.message || err);
     entry.error = err?.name === 'AbortError'
-      ? 'The webhook did not respond within 20 seconds.'
-      : `Couldn't reach ${target.host}. Check your connection and try again.`;
+      ? 'mEditor didn’t respond in time. Try again in a moment.'
+      : 'Couldn’t reach mEditor. Check your connection and try again.';
   } finally {
     clearTimeout(timer);
   }
@@ -107,6 +114,7 @@ async function sendToWebhook(rawPayload, { tabId, source = 'manual' } = {}) {
     ok: entry.ok,
     status: entry.status,
     error: entry.error,
+    detail: entry.detail,
     response: entry.response,
     sentAt: entry.sentAt,
   };
