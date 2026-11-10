@@ -1,4 +1,4 @@
-// End-to-end tests for Meditor.
+// End-to-end tests for mEditor.
 //
 //   node tests/run.mjs            # run everything
 //   node tests/run.mjs --shots    # also write popup/options screenshots to docs/
@@ -306,7 +306,7 @@ await test('first install without a webhook opens Settings', async () => {
   const isOptions = (p) => p.url().includes('/src/options/options.html');
   const opts = ctx.pages().find(isOptions) || await ctx.waitForEvent('page', { predicate: isOptions, timeout: 5000 });
   await opts.waitForSelector('#webhook-status.bad');
-  assert.match(await opts.textContent('#webhook-status'), /Paste your Meditor relay URL/);
+  assert.match(await opts.textContent('#webhook-status'), /Paste your mEditor relay URL/);
   assert.equal(await opts.isHidden('#reset'), true);
   await opts.close();
 });
@@ -332,7 +332,7 @@ const waitFor = async (fn, ms = 5000) => {
 
 const registeredScripts = () => worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).length);
 
-await test('with automatic detection off, nothing runs on pages until Meditor is opened', async () => {
+await test('with automatic detection off, nothing runs on pages until mEditor is opened', async () => {
   await new Promise((r) => setTimeout(r, 800));
   assert.equal(await badge(), '');
   assert.equal(await registeredScripts(), 0);
@@ -342,7 +342,7 @@ const popup = await ctx.newPage();
 await popup.setViewportSize({ width: 384, height: 600 });
 await popup.goto(`chrome-extension://${extId}/src/popup/popup.html?tabId=${tabId}`);
 
-await test('opening Meditor reads the page on demand and badges it', async () => {
+await test('opening mEditor reads the page on demand and badges it', async () => {
   await popup.waitForSelector('#view-result:not([hidden])');
   assert.equal(await popup.textContent('#verdict-title'), 'News article detected');
   assert.equal(await waitFor(async () => (await badge()) === '✓' && '✓'), '✓');

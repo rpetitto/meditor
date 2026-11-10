@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Zip the extension for "Load unpacked" sharing or Chrome Web Store upload.
 #
-# The default webhook (normally your Meditor relay URL) is read from the gitignored
+# The default webhook (normally your mEditor relay URL) is read from the gitignored
 # .webhook-url file or $MEDITOR_WEBHOOK_URL and baked into the zip; the source tree
 # is never modified. The Glide URL and bearer token belong in the relay, not here.
 set -euo pipefail
@@ -27,7 +27,7 @@ if u.scheme not in ("http", "https"):
     sys.exit("Not an http(s) URL in .webhook-url / MEDITOR_WEBHOOK_URL")
 if u.netloc.endswith("glideapps.com") and os.environ.get("ALLOW_DIRECT_GLIDE") != "1":
     sys.exit("Refusing to bake the Glide webhook itself into the extension: point .webhook-url at your "
-             "Meditor relay instead (see relay/README.md). Set ALLOW_DIRECT_GLIDE=1 only for a "
+             "mEditor relay instead (see relay/README.md). Set ALLOW_DIRECT_GLIDE=1 only for a "
              "trigger that has no bearer token.")
 config = json.load(open(path))
 config["webhookUrl"] = url

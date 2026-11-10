@@ -1,5 +1,5 @@
 /**
- * Meditor relay: a Cloudflare Worker between the extension and Glide.
+ * mEditor relay: a Cloudflare Worker between the extension and Glide.
  *
  * The Glide webhook URL and its bearer token live here as Worker secrets, so
  * neither ships inside the extension. The relay only forwards well-formed
@@ -39,7 +39,7 @@ export default {
       return json({ error: 'Only POST is allowed.' }, 405, cors);
     }
     if (!allowed) {
-      return json({ error: 'Requests must come from the Meditor extension.' }, 403);
+      return json({ error: 'Requests must come from the mEditor extension.' }, 403);
     }
     if (!isConfigured(env)) {
       return json({ error: 'The relay is not configured yet: set GLIDE_WEBHOOK_URL and GLIDE_TOKEN.' }, 500, cors);

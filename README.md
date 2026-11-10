@@ -1,8 +1,8 @@
-# Meditor — News Clipper
+# mEditor — News Clipper
 
 A Chrome extension that recognizes when you're reading a news article, pulls out its key details, and sends them to a Glide webhook in one click.
 
-![The Meditor popup: detection, preview, editable fields, JSON payload and dark mode](docs/popup-tour.png)
+![The mEditor popup: detection, preview, editable fields, JSON payload and dark mode](docs/popup-tour.png)
 
 ## What it sends
 
@@ -29,7 +29,7 @@ Each clip is a `POST` with `Content-Type: application/json` and exactly this sha
 ## How clips reach Glide
 
 ```
-Meditor extension ──POST clip──▶ Meditor relay (Cloudflare Worker) ──+ bearer token──▶ Glide webhook trigger
+mEditor extension ──POST clip──▶ mEditor relay (Cloudflare Worker) ──+ bearer token──▶ Glide webhook trigger
 ```
 
 The Glide webhook trigger requires a bearer token. Anything shipped inside an extension can be read by its users, for example in DevTools' Network tab. So the token and the Glide URL live only in a small **relay** ([`relay/`](relay/)), stored as Cloudflare secrets.
@@ -42,24 +42,24 @@ The extension only knows the relay's address. The relay checks each clip and add
 2. **Build the extension with that URL as its default:**
    ```bash
    echo 'https://meditor-relay.<you>.workers.dev/' > .webhook-url   # gitignored
-   npm run package      # → dist/meditor-extension-v1.3.0.zip
+   npm run package      # → dist/meditor-extension-v1.3.1.zip
    ```
    The packager refuses to bake in a raw `glideapps.com` URL, because users would then need the token.
 3. **Publish it** to the Chrome Web Store as an unlisted item (see [Publishing](#publishing-to-the-chrome-web-store)), and share the store link. Or **install the zip directly** on each computer:
    1. Unzip it.
    2. Open `chrome://extensions` and switch on **Developer mode**.
    3. Click **Load unpacked** and pick the folder.
-   4. Pin Meditor from the puzzle-piece menu.
+   4. Pin mEditor from the puzzle-piece menu.
 
 If a build has no default URL, Settings opens on install and asks for the relay URL.
 
-**Updating:** unzip the new build over the same folder, then click ↻ on Meditor's card in `chrome://extensions`. Settings and history are kept. Installs from v1.1 or earlier that stored the Glide URL directly are switched to the relay automatically, and any saved token is deleted.
+**Updating:** unzip the new build over the same folder, then click ↻ on mEditor's card in `chrome://extensions`. Settings and history are kept. Installs from v1.1 or earlier that stored the Glide URL directly are switched to the relay automatically, and any saved token is deleted.
 
 Works in Chrome 110+ and other Chromium browsers (Edge, Brave, Arc).
 
 ## Using it
 
-- **Click the icon** (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd>) on any article to see the detection score, a preview card and every field. Meditor reads a page only when you do this, unless you turn on automatic detection.
+- **Click the icon** (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd>) on any article to see the detection score, a preview card and every field. mEditor reads a page only when you do this, unless you turn on automatic detection.
 - **The toolbar badge** shows the result. <kbd>✓</kbd> green means a news article, <kbd>?</kbd> amber means it might be one, and <kbd>↑</kbd> navy means you already sent this page. With **Automatic detection** on, the badge appears as you browse, without clicking.
 - **Fix anything before sending.** Title, URL, image, date and author chips are all editable, and the *JSON payload* tab shows exactly what will be posted.
 - **Click Send to Glide** (or press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd>). The button turns green when the webhook accepts the clip. If it fails, it turns red and shows the reason.
@@ -104,7 +104,7 @@ Tested against live articles from BBC, NPR, CNN, Al Jazeera, TechCrunch, Ars Tec
 
 Full policy: [PRIVACY.md](PRIVACY.md).
 
-- Meditor asks for no site access at install. It reads a page only when you click its icon (`activeTab`), or on every page only after you switch on automatic detection and approve Chrome's prompt.
+- mEditor asks for no site access at install. It reads a page only when you click its icon (`activeTab`), or on every page only after you switch on automatic detection and approve Chrome's prompt.
 - Detection runs entirely inside your browser.
 - Nothing is sent anywhere until you click **Send**, or until you turn on auto-send.
 - The only network request the extension makes is the webhook `POST`, sent without cookies.

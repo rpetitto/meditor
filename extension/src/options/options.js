@@ -4,10 +4,10 @@ const $ = (id) => document.getElementById(id);
 
 const SAMPLE = {
   url: 'https://example.com/2026/11/09/meditor-test',
-  title: 'Meditor test payload — you can delete this row',
+  title: 'mEditor test payload — you can delete this row',
   image: 'https://example.com/lead-image.jpg',
   published_date: new Date().toISOString(),
-  authors: ['Meditor Test'],
+  authors: ['mEditor Test'],
 };
 
 function setStatus(kind, text) {
@@ -72,13 +72,13 @@ async function onReset() {
   const fallback = await getDefaultWebhookUrl();
   if (!fallback) return;
   $('webhook').value = fallback;
-  // Clearing the stored URL makes Meditor follow the built-in default, including future builds.
+  // Clearing the stored URL makes mEditor follow the built-in default, including future builds.
   await saveSettings({ webhookUrl: '' });
   setStatus('ok', 'Restored the default webhook');
 }
 
 const ALL_SITES = ['http://*/*', 'https://*/*'];
-const DETECT_HINT = 'Chrome will ask to let Meditor read pages on all sites. Detection runs inside your browser, and nothing is sent until you click Send.';
+const DETECT_HINT = 'Chrome will ask to let mEditor read pages on all sites. Detection runs inside your browser, and nothing is sent until you click Send.';
 
 async function renderAuto(settings) {
   settings ||= await getSettings();
@@ -151,7 +151,7 @@ async function init() {
   // Builds packaged without a default webhook have nothing to reset to.
   $('reset').hidden = !(await getDefaultWebhookUrl());
   if (!settings.webhookUrl) {
-    setStatus('bad', 'Paste your Meditor relay URL and press Save to start clipping.');
+    setStatus('bad', 'Paste your mEditor relay URL and press Save to start clipping.');
     $('webhook').focus();
   }
   renderAuto(settings);
@@ -177,7 +177,7 @@ async function init() {
       }
       if (!granted) {
         hint.classList.add('bad');
-        hint.textContent = 'Chrome didn’t grant access, so automatic detection stays off. You can still click the Meditor icon on any article.';
+        hint.textContent = 'Chrome didn’t grant access, so automatic detection stays off. You can still click the mEditor icon on any article.';
         renderAuto();
         return;
       }

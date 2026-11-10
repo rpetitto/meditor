@@ -25,5 +25,5 @@ export function startRelay({ env, port = 0, host = '127.0.0.1' } = {}) {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const { GLIDE_WEBHOOK_URL, GLIDE_TOKEN, ALLOWED_ORIGINS, PORT = '8787' } = process.env;
   const server = await startRelay({ env: { GLIDE_WEBHOOK_URL, GLIDE_TOKEN, ALLOWED_ORIGINS }, port: Number(PORT) });
-  console.log(`Meditor relay on http://127.0.0.1:${server.address().port} (configured: ${Boolean(GLIDE_WEBHOOK_URL && GLIDE_TOKEN)})`);
+  console.log(`mEditor relay on http://127.0.0.1:${server.address().port} (configured: ${Boolean(GLIDE_WEBHOOK_URL && GLIDE_TOKEN)})`);
 }

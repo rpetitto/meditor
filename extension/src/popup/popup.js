@@ -55,7 +55,7 @@ async function load({ rescan = false } = {}) {
   if (tab.url && !/^https?:/i.test(tab.url)) {
     return unsupported(/^(chrome|edge|about|chrome-extension|devtools|view-source):/i.test(tab.url)
       ? "Chrome doesn't let extensions read its own pages. Open a news article and try again."
-      : 'Meditor only works on regular web pages (http / https).');
+      : 'mEditor only works on regular web pages (http / https).');
   }
   if (tab.url && /^https:\/\/(chrome\.google\.com\/webstore|chromewebstore\.google\.com)/i.test(tab.url)) {
     return unsupported("Chrome doesn't let extensions run on the Web Store.");
@@ -65,7 +65,7 @@ async function load({ rescan = false } = {}) {
   try {
     res = await requestExtraction(tab.id);
   } catch (err) {
-    return unsupported('This page blocked Meditor from reading it. Try reloading the page, then open Meditor again.');
+    return unsupported('This page blocked mEditor from reading it. Try reloading the page, then open mEditor again.');
   }
   if (!res?.ok) return unsupported(res?.error || 'Something went wrong reading this page.');
 
@@ -308,7 +308,7 @@ function renderFooter() {
     btn.dataset.tone = 'quiet';
     btn.querySelector('use').setAttribute('href', '#i-gear');
     $('send-label').textContent = 'Add your webhook URL';
-    note.textContent = 'Meditor needs a webhook before it can send.';
+    note.textContent = 'mEditor needs a webhook before it can send.';
   } else if (state.sentEntry) {
     $('send-label').textContent = 'Send again';
     note.classList.add('ok');

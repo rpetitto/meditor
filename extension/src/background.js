@@ -15,13 +15,13 @@ async function setBadge(tabId, state, result) {
   try {
     if (!badge) {
       await chrome.action.setBadgeText({ tabId, text: '' });
-      await chrome.action.setTitle({ tabId, title: 'Meditor — no article on this page' });
+      await chrome.action.setTitle({ tabId, title: 'mEditor — no article on this page' });
       return;
     }
     await chrome.action.setBadgeText({ tabId, text: badge.text });
     await chrome.action.setBadgeBackgroundColor({ tabId, color: badge.color });
     if (chrome.action.setBadgeTextColor) await chrome.action.setBadgeTextColor({ tabId, color: '#ffffff' });
-    await chrome.action.setTitle({ tabId, title: `Meditor — ${badge.title(result)}` });
+    await chrome.action.setTitle({ tabId, title: `mEditor — ${badge.title(result)}` });
   } catch {
     // Tab closed or navigated away; nothing to update.
   }
@@ -204,7 +204,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
 // -----------------------------------------------------------------------------
 // Automatic detection (opt-in)
 // -----------------------------------------------------------------------------
-// Without it Meditor only reads a page when the user clicks the icon (activeTab). With
+// Without it mEditor only reads a page when the user clicks the icon (activeTab). With
 // it, the content script is registered for every http(s) page, which needs the optional
 // all-sites host permission the user grants from Settings.
 
@@ -241,7 +241,7 @@ async function applyDetection() {
       await chrome.scripting.unregisterContentScripts({ ids: [DETECT_ID] });
     }
   } catch (err) {
-    console.warn('Meditor: could not update automatic detection', err);
+    console.warn('mEditor: could not update automatic detection', err);
   }
 }
 

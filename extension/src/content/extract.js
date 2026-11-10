@@ -1,5 +1,5 @@
 /*
- * Meditor content script.
+ * mEditor content script.
  *
  * Runs on every http(s) page. It scores how likely the page is a news article,
  * extracts { url, title, image, published_date, authors }, reports the verdict

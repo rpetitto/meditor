@@ -1,6 +1,6 @@
 // Shared between the background worker, popup and options page (ES module).
 
-// Where clips are POSTed by default: normally your Meditor relay (relay/ in this repo),
+// Where clips are POSTed by default: normally your mEditor relay (relay/ in this repo),
 // which holds the Glide webhook URL and bearer token so neither ships in the extension.
 // It lives in /config.json, which `npm run package` fills in from the gitignored
 // .webhook-url file (or $MEDITOR_WEBHOOK_URL). It is read at runtime rather than
@@ -21,7 +21,7 @@ export async function getDefaultWebhookUrl() {
 
 export const DEFAULTS = Object.freeze({
   webhookUrl: '',
-  // Off by default: Meditor reads a page only when you click its icon (activeTab).
+  // Off by default: mEditor reads a page only when you click its icon (activeTab).
   // Turning this on asks Chrome for access to all sites and shows the badge as you browse.
   autoDetect: false,
   // Off by default: nothing leaves the browser unless you press "Send".

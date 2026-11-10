@@ -1,9 +1,9 @@
-# Meditor relay
+# mEditor relay
 
-A tiny Cloudflare Worker between the Meditor extension and your Glide webhook.
+A tiny Cloudflare Worker between the mEditor extension and your Glide webhook.
 
 ```
-Meditor extension ──POST clip──▶ relay (Cloudflare Worker) ──POST + Authorization: Bearer ──▶ Glide
+mEditor extension ──POST clip──▶ relay (Cloudflare Worker) ──POST + Authorization: Bearer ──▶ Glide
                                  holds GLIDE_WEBHOOK_URL + GLIDE_TOKEN as secrets
 ```
 

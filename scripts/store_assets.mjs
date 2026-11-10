@@ -35,7 +35,7 @@ const BASE_CSS = `
       linear-gradient(135deg, #234a8c 0%, #13294f 70%, #0d1d3a 100%);
   }
   .serif { font-family: Charter, "Bitstream Charter", Georgia, serif; }
-  .eyebrow { display: flex; align-items: center; gap: 12px; color: #96bee6; font-weight: 700; letter-spacing: 2.4px; font-size: 15px; text-transform: uppercase; }
+  .eyebrow { display: flex; align-items: center; gap: 12px; color: #96bee6; font-weight: 700; letter-spacing: .4px; font-size: 17px; }
   .eyebrow img { width: 34px; height: 34px; }
   .shot { border-radius: 18px; box-shadow: 0 40px 80px -30px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.08); }
 `;
@@ -50,7 +50,7 @@ const screenshot = (title, sub, file, bullets = []) => `<!doctype html><html><he
   .shot { width: 440px; height: 688px; display: block; }
 </style></head><body><div class="wrap">
   <div>
-    <div class="eyebrow"><img src="${icon}">Meditor · News Clipper</div>
+    <div class="eyebrow"><img src="${icon}">mEditor · News Clipper</div>
     <h1 class="serif">${title}</h1>
     <p>${sub}</p>
     ${bullets.length ? `<ul>${bullets.map((b) => `<li>${b}</li>`).join('')}</ul>` : ''}
@@ -62,7 +62,7 @@ const pages = [
   {
     out: 'screenshot-1.png', w: 1280, h: 800,
     html: screenshot('Spot a news article.<br>Clip it in one click.',
-      'Meditor reads the article you’re on and pulls out exactly what your Glide app needs.',
+      'mEditor reads the article you’re on and pulls out exactly what your Glide app needs.',
       'popup-main.png', ['Headline, link and lead image', 'Publish date and every author', 'Confidence score you can inspect']),
   },
   {
@@ -84,7 +84,7 @@ const pages = [
   {
     out: 'screenshot-5.png', w: 1280, h: 800,
     html: screenshot('Private by default.',
-      'Meditor reads a page only when you click its icon, unless you switch on automatic detection. Nothing is sent until you press Send.',
+      'mEditor reads a page only when you click its icon, unless you switch on automatic detection. Nothing is sent until you press Send.',
       'popup-dark.png', ['No access to your sites until you ask', 'No tracking, no analytics', 'Light and dark themes']),
   },
   {
@@ -94,7 +94,7 @@ const pages = [
       .t img { width: 104px; height: 104px; filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); }
       h1 { font-size: 40px; letter-spacing: -.3px; }
       p { margin-top: 6px; font-size: 16.5px; line-height: 1.35; color: #c9dcf2; }
-    </style></head><body><div class="t"><img src="${icon}"><div><h1 class="serif">Meditor</h1><p>Clip news articles to your Glide app in one click.</p></div></div></body></html>`,
+    </style></head><body><div class="t"><img src="${icon}"><div><h1 class="serif">mEditor</h1><p>Clip news articles to your Glide app in one click.</p></div></div></body></html>`,
   },
   {
     out: 'promo-marquee.png', w: 1400, h: 560,
@@ -106,7 +106,7 @@ const pages = [
       .crop { height: 560px; overflow: hidden; padding-top: 70px; }
       .crop img { width: 440px; display: block; }
     </style></head><body><div class="m">
-      <div><img class="i" src="${icon}"><h1 class="serif">Meditor</h1><p>Spot news articles and clip them to your Glide app in one click.</p></div>
+      <div><img class="i" src="${icon}"><h1 class="serif">mEditor</h1><p>Spot news articles and clip them to your Glide app in one click.</p></div>
       <div class="crop"><img class="shot" src="${img('popup-main.png')}"></div>
     </div></body></html>`,
   },
